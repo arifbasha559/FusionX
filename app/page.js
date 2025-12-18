@@ -22,9 +22,9 @@ export default function LandingPage() {
       <Navbar />
 
       {/* 1. HERO SECTION */}
-      <section className="pt-32 pb-20 px-6 text-center max-w-5xl mx-auto min-h-screen flex flex-col justify-center items-center">
+      <section className="pt-32 pb-20 px-6 text-center select-none max-w-5xl mx-auto min-h-screen flex flex-col justify-center items-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-900/30 hover:bg-violet-900/60 transition-all border border-violet-700/50 text-violet-300 text-sm font-medium mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <span className="relative flex h-2 w-2">
+          <span className="relative flex h-2 w-2 ">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500 "></span>
           </span>
@@ -49,7 +49,7 @@ export default function LandingPage() {
 
       {/* 2. LIVE STATS / BRANDS (Visual Filler) */}
       {/* Infinite Scrolling Marquee */}
-      <div className="border-y border-gray-800 bg-black/20 py-8 overflow-hidden select-none relative">
+      <div className="hover:border-violet-600/50 border-y border-gray-800 bg-black/20 py-8 overflow-hidden select-none relative">
         {/* Left Fade Gradient */}
         <div className="absolute inset-y-0 left-0 w-32 bg-linear-to-r from-[#171719] to-transparent z-10" />
         {/* Right Fade Gradient */}

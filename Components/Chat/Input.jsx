@@ -108,7 +108,8 @@ const Input = ({
                                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-300 bg-[#2A2A30] hover:bg-[#36363E] rounded-lg transition-colors border ${activeMenu === 'model' ? 'border-violet-500 ring-1 ring-violet-500/50' : 'border-gray-700/50'}`}
                             >
                                 <BiBot size={16} className="text-violet-400" />
-                                <span className="max-w-20 truncate">{model || 'Select Model'}</span>
+                                <span className=" truncate md:hidden">{model.slice(0, 2) || 'Select Model'}</span>
+                                <span className="md:max-w-20 hidden md:inline  truncate">{model || 'Select Model'}</span>
                                 <MdKeyboardArrowDown className={`transition-transform duration-200 ${activeMenu === 'model' ? 'rotate-180' : ''}`} />
                             </button>
 
@@ -184,7 +185,7 @@ const Input = ({
                                 onClick={() => toggleMenu('time')}
                                 className={`flex items-center justify-between gap-1.5 px-2 py-1.5 text-xs text-gray-300 bg-[#2A2A30] hover:bg-[#36363E] rounded-lg transition-colors border ${activeMenu === 'time' ? 'border-violet-500 ring-1 ring-violet-500/50' : 'border-gray-700/50'}`}
                             >
-                                <IoTimeOutline size={14} className={responseTime === 'high' ? 'text-red-400' : responseTime === 'minimal' ? 'text-green-400' : 'text-violet-400'} />
+                                <IoTimeOutline size={14} className={responseTime === 'high' ? 'text-red-400' : responseTime === 'minimal' ? 'text-green-400' : responseTime === 'low' ? 'text-yellow-400' : 'text-violet-400'} />
                                 <span className="capitalize hidden sm:inline">{responseTime || 'Medium'}</span>
                                 <MdKeyboardArrowDown className={`transition-transform duration-200 ${activeMenu === 'time' ? 'rotate-180' : ''}`} />
                             </button>
@@ -192,19 +193,28 @@ const Input = ({
                             {/* Dropdown Menu */}
                             {activeMenu === 'time' && (
                                 <div className="absolute bottom-full left-0 mb-2 w-32 bg-[#1B1B1F] border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
-                                    {['minimal', 'low', 'medium', 'high'].map((time) => (
-                                        <button
-                                            key={time}
-                                            type="button"
-                                            onClick={() => {
-                                                setResponseTime(time);
-                                                setActiveMenu(null);
-                                            }}
-                                            className={`w-full text-left px-3 py-2 text-xs hover:bg-violet-600/20 hover:text-violet-300 transition-colors ${responseTime === time ? 'text-violet-400 bg-violet-600/10' : 'text-gray-300'
-                                                }`}
-                                        >
-                                            {time.charAt(0).toUpperCase() + time.slice(1)}
-                                        </button>
+                                    {['minimal', 'low', 'medium', 'high'].map((time, index) => (
+                                        <>
+                                            {index === 0 && (
+                                                <div className="my-1 border-t border-gray-700/50 pt-2 pb-0.5">
+                                                    <p className="px-3 text-[8px] font-bold text-center  text-green-400/80 uppercase tracking-widest select-none">
+                                                        thinking level
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <button
+                                                key={time}
+                                                type="button"
+                                                onClick={() => {
+                                                    setResponseTime(time);
+                                                    setActiveMenu(null);
+                                                }}
+                                                className={`w-full text-left px-3 py-2 text-xs hover:bg-violet-600/20 hover:text-violet-300 transition-colors ${responseTime === time ? 'text-violet-400 bg-violet-600/10' : 'text-gray-300'
+                                                    }`}
+                                            >
+                                                {time.charAt(0).toUpperCase() + time.slice(1)}
+                                            </button>
+                                        </>
                                     ))}
                                 </div>
                             )}
@@ -213,22 +223,22 @@ const Input = ({
 
                     {/* RIGHT SIDE: Actions (Mic, Send) */}
                     <div className="flex items-center gap-2 ml-auto">
+
                         <button
                             type="button"
-                            className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-[#36363E] transition-all"
+                            className="p-2 md:inline hidden rounded-full text-gray-400 hover:text-white hover:bg-[#36363E] transition-all"
                         >
                             <BiMicrophone className="text-xl" />
                         </button>
-
                         {/* Inside Input.jsx's return statement, replace the send button block with this: */}
                         <button
                             type="button"
                             disabled={!input && !isTyping} // Enable if typing (to stop) or if input has text (to send)
                             onClick={isTyping ? stopGeneration : handleSend}
-                            className={`group flex items-center justify-center p-2 rounded-lg text-white transition-all shadow-lg 
+                            className={`group flex items-center justify-center p-2  text-white transition-all shadow-lg 
         ${isTyping
-                                    ? "bg-red-500 hover:bg-red-600 shadow-red-900/20"
-                                    : "bg-violet-600 hover:bg-violet-700 shadow-violet-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    ? "bg-red-500 hover:bg-red-600 shadow-red-900/20 animate-pulse rounded-full"
+                                    : "bg-violet-600 hover:bg-violet-700 rounded-lg shadow-violet-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 }`}
                         >
                             {isTyping ? (

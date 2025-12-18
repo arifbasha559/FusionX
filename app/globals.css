@@ -24,7 +24,10 @@ body {
   scrollbar-gutter: stable;
 
 }
-
+*::selection{
+  background-color: #ffffff91;
+  color: #000;
+}
 @theme {
   /* Define the animation name and duration */
   --animate-marquee: marquee 40s linear infinite;

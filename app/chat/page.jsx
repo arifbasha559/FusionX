@@ -7,12 +7,13 @@ import { FaBars } from 'react-icons/fa6'
 
 const App = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
+    const [isnewChat, setIsnewChat] = useState(false);
+    
 
     return (
         <div className="flex h-screen bg-[#1B1B1F] overflow-hidden">
             {/* 1. Sidebar Component */}
-            <Navbar isOpen={isSidebarOpen} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+            <Navbar isOpen={isSidebarOpen} isnewChat={isnewChat} setIsnewChat={setIsnewChat} toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 
             {/* 2. Main Content Area */}
             <main className="flex-1 flex flex-col h-full relative w-full">

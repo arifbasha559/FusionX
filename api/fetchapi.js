@@ -145,5 +145,29 @@ const fetchApi = (input, model, mode, responseTime, messages) => {
     }
     return fetchAdvancedResponse(model, responseTime, messages);
 };
+// https://text.pollinations.ai/python?system="Act as a title maker (20 letter)"
+export const titleMaker = async (input) => {
+    const API_URL = `https://text.pollinations.ai/${encodeURIComponent(input)}?system="Act as a title maker (20 letter)"`;
 
+    try {
+        const res = await fetch(API_URL, {
+            method: "GET",
+        });
+
+        if (!res.ok) {
+            return `❌ Error ${res.status}: ${res.statusText}`;
+        }
+
+        // 1. Get the raw response as text first (do not use res.json() immediately)
+        const rawText = await res.text();
+        console.log("titleMaker rawText:", rawText);
+        // 2. Try to parse it as JSON
+
+        return rawText;
+
+    } catch (error) {
+        console.error("❌ Pollinations Title Creation Failed:", error);
+        return "⚠️ Connection failed.";
+    }
+}
 export default fetchApi;

@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState, useMemo, memo } from "react";
 import Input from "./Input";
-import { FaRegCopy, FaRobot, FaUser, FaArrowDown, FaStop } from "react-icons/fa6"; // Added FaStop
-import fetchApi from "../../api/fetchapi";
+import { FaRegCopy, FaRobot, FaUser, FaArrowDown, FaStop } from "react-icons/fa6";
+import fetchApi, { titleMaker } from "../../api/fetchapi";
 import ReactMarkdown from "react-markdown";
 import { HiClipboardCheck, HiOutlineClipboardCopy } from "react-icons/hi";
 import { FaCopy } from "react-icons/fa";
 import { AiOutlineDislike, AiOutlineLike } from "react-icons/ai";
 import { BiImage } from "react-icons/bi";
 import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
+import { nanoid } from "nanoid";
 
 // --- 1. New Loading Bubble Component ---
 const LoadingBubble = () => (
@@ -18,8 +20,7 @@ const LoadingBubble = () => (
     </div>
 );
 
-// ... ImageRenderer & CodeBlock remain the same (omitted for brevity) ...
-// (Assume ImageRenderer and CodeBlock are defined here as before)
+// ... ImageRenderer & CodeBlock ...
 const ImageRenderer = ({ src, alt }) => {
     const [isLoading, setIsLoading] = useState(true);
     const handleDownload = async (e) => {
@@ -93,9 +94,8 @@ const CodeBlock = ({ children }) => {
     );
 };
 
-// --- 2. Enhanced MessageItem (Handles Loading State) ---
+// --- 2. Enhanced MessageItem ---
 const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, copiedIndex, setCopiedIndex }) => {
-    // Check if this message is the "Thinking..." placeholder
     const isThinking = msg.content === "Thinking 🤖...";
 
     return (
@@ -115,8 +115,6 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                 )}
 
                 <div className={`px-4 py-2 rounded-2xl max-w-full shadow-sm text-sm w-fit ${msg.role === "user" ? "bg-violet-600 text-white rounded-tr-none" : "bg-[#2E2E33] text-gray-100 rounded-tl-none"}`}>
-
-                    {/* SHOW LOADING BUBBLE OR CONTENT */}
                     {isThinking ? (
                         <LoadingBubble />
                     ) : (
@@ -153,10 +151,10 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
     );
 });
 MessageItem.displayName = "MessageItem";
-// --- 3. Enhanced Type Effect (Uses Ref for Cleanup) ---
-function typeEffect(text, setMessages, delay = 10, setIsTyping, intervalRef) {
+
+// --- 3. Enhanced Type Effect ---
+function typeEffect(text, setMessages, delay = 10, setIsTyping, intervalRef, routeId, chatId) {
     let i = 0;
-    // Clear any existing interval first
     if (intervalRef.current) clearInterval(intervalRef.current);
 
     intervalRef.current = setInterval(() => {
@@ -181,11 +179,19 @@ function typeEffect(text, setMessages, delay = 10, setIsTyping, intervalRef) {
             clearInterval(intervalRef.current);
             intervalRef.current = null;
             setIsTyping(false);
+            console.log(routeId, chatId)
+            if (!routeId) {
+                window.history.replaceState(null, "", `/chat/${chatId}`);
+
+            }
         }
     }, delay);
 }
 
 const Chat = () => {
+    const params = useParams(); // 2. Get parameters
+    const router = useRouter();
+    const routeId = params?.id;
     const models = ["openai", "deepseek", "gemini", 'mistral', "qwen-coder", "roblox-rp", "bidara", "evil", "unity"];
     const [input, setInput] = useState("");
     const [model, setModel] = useState(models[0]);
@@ -199,9 +205,88 @@ const Chat = () => {
     const [showScrollButton, setShowScrollButton] = useState(false);
     const chatEndRef = useRef(null);
     const chatContainerRef = useRef(null);
-
-    // NEW: Ref to store the typing interval ID
     const typingIntervalRef = useRef(null);
+    const [copiedIndex, setCopiedIndex] = useState(null);
+    const [chatId, setChatId] = useState(() => {
+        return routeId || nanoid();
+    });
+    useEffect(() => {
+        if (routeId) {
+            // We are looking at a specific chat
+            setChatId(routeId);
+
+            const savedChats = localStorage.getItem("chats");
+            if (savedChats) {
+                const parsedChats = JSON.parse(savedChats);
+                const currentChat = parsedChats.find(c => c.id === routeId);
+
+                if (currentChat) {
+                    setMessages(currentChat.messages);
+                    setModel(currentChat.model || models[0]);
+                } else {
+                    // URL ID exists but not found in storage (maybe deleted?)
+                    // Optional: Redirect to new chat or just start empty
+                    console.log("Chat ID not found in storage");
+                }
+            }
+        } else {
+            // No ID in URL (Fresh Chat)
+            setChatId(Date.now().toString(36) + Math.random().toString(36).substr(2));
+            setMessages([{ role: "system", content: "Hey there 👋! How can I help you today?", model: models[0] }]);
+        }
+    }, [routeId]);
+
+
+    // --- NEW: Save to LocalStorage Effect ---
+    useEffect(() => {
+        // 1. If messages are just the default welcome message, don't save yet
+        if (messages.length <= 1) return;
+
+        // 2. Debounce saving to avoid performance hit during typing effect
+        // We wait 1 second after the last update before writing to localStorage
+        const timeoutId = setTimeout(async () => {
+            try {
+                // Get existing chats
+                const savedChats = localStorage.getItem("chats");
+                const chats = savedChats ? JSON.parse(savedChats) : [];
+
+                // Find if this chat already exists in storage
+                const existingIndex = chats.findIndex((c) => c.id === chatId);
+
+                // Create the chat object
+                // We use the first user message as the title, or "New Chat" fallback
+                const firstUserMsg = messages.find(m => m.role === 'user');
+                const title = firstUserMsg ? await titleMaker(firstUserMsg.content) : "New Chat";
+                const currentChatData = {
+                    id: chatId,
+                    title: title,
+                    messages: messages, // Save the full history
+                    model: model,
+                    lastUpdated: new Date().toISOString()
+                };
+
+                if (existingIndex !== -1) {
+                    // Update existing session
+                    chats[existingIndex] = currentChatData;
+                } else {
+                    // Create new session (add to top)
+                    chats.unshift(currentChatData);
+                }
+
+                localStorage.setItem("chats", JSON.stringify(chats));
+
+                // --- ADD THIS LINE ---
+                window.dispatchEvent(new Event("chatListUpdated"));
+                // --------------------
+
+            } catch (error) {
+                console.error("Failed to save chat history:", error);
+            }
+        }, 1000); // 1s debounce
+
+        // Cleanup: If messages change again within 1s (fast typing), clear previous timer
+        return () => clearTimeout(timeoutId);
+    }, [messages, chatId, model]);
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -220,22 +305,19 @@ const Chat = () => {
 
     const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
-    // --- 4. Stop Generation Function ---
     const stopGeneration = () => {
         if (typingIntervalRef.current) {
-            clearInterval(typingIntervalRef.current); // Stop the timer
+            clearInterval(typingIntervalRef.current);
             typingIntervalRef.current = null;
         }
         setIsTyping(false);
-
-        // Remove the cursor from the last message
         setMessages(prev => {
             const lastMsg = prev[prev.length - 1];
             if (lastMsg.role === 'system' && lastMsg.content.endsWith("▋")) {
                 const updated = [...prev];
                 updated[updated.length - 1] = {
                     ...lastMsg,
-                    content: lastMsg.content.slice(0, -1) // Remove cursor
+                    content: lastMsg.content.slice(0, -1)
                 };
                 return updated;
             }
@@ -254,36 +336,29 @@ const Chat = () => {
         setMessages(newHistory);
         setInput("");
         setTimeout(scrollToBottom, 50);
-        setIsTyping(true); // Start Loading State
+        setIsTyping(true);
 
-        // Add Placeholder
         setMessages((prev) => [...prev, { role: "system", content: "Thinking 🤖...", model: currentModel, mode: currentMode }]);
 
         try {
             const cleanHistory = newHistory.map(({ role, content }) => ({ role, content }));
             const aiResponse = await fetchApi(input, currentModel, currentMode, responseTime, cleanHistory);
-
-            // Pass the ref to typeEffect
-            typeEffect(aiResponse, setMessages, 15, setIsTyping, typingIntervalRef);
+            console.log("AI Response:", aiResponse);
+            typeEffect(aiResponse, setMessages, 15, setIsTyping, typingIntervalRef, routeId, chatId);
         } catch (err) {
             setMessages((prev) => [...prev.slice(0, -1), { role: "system", content: "⚠️ Failed to fetch response.", model: "error" }]);
             setIsTyping(false);
         }
     };
+
     const handleKeyPress = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-
-            // If AI is typing, ignore the Enter key completely
-            if (isTyping) {
-                return;
-            }
-
-            // Otherwise, send the message
+            if (isTyping) return;
             handleSend();
         }
     };
-    const [copiedIndex, setCopiedIndex] = useState(null);
+
     const copyToClipboard = async (text) => {
         try { await navigator.clipboard.writeText(text); return true; } catch (err) { return false; }
     };
@@ -305,7 +380,7 @@ const Chat = () => {
     }), []);
 
     return (
-        <div className="flex flex-col relative h-full max-w-11/12 sm:max-w-xl md:max-w-3xl mx-auto">
+        <div className="flex flex-col relative md:h-screen h-[calc(100vh-64px)] max-w-full sm:max-w-xl md:max-w-3xl mx-auto">
             <div
                 ref={chatContainerRef}
                 onScroll={handleScroll}
@@ -333,7 +408,6 @@ const Chat = () => {
             </div>
 
             <div className="sticky bottom-0 bg-[#1B1B1F] pb-4 px-4 pt-2 border-t border-gray-800">
-                {/* 5. Pass isTyping and stopGeneration to Input */}
                 <Input
                     input={input}
                     setInput={setInput}
@@ -355,3 +429,4 @@ const Chat = () => {
 };
 
 export default Chat;
+

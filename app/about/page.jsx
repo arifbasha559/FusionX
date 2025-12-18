@@ -55,7 +55,7 @@ export default function AboutPage() {
                         <p className="text-gray-300 leading-relaxed mb-6">
                             &emsp;&emsp;Transparency is key to trust in the age of AI. The entire source code for the FusionX frontend is available for audit.
                         </p>
-                        <a href="https://github.com" target="_blank" className="inline-flex items-center gap-2 text-white bg-[#2A2A2E] hover:bg-[#323236] px-5 py-3 rounded-lg font-medium transition-colors border border-gray-700">
+                        <a href="https://github.com/arifbasha559/FusionX" target="_blank" className="inline-flex items-center gap-2 text-white bg-[#2A2A2E] hover:bg-[#323236] px-5 py-3 rounded-lg font-medium transition-colors border border-gray-700">
                             View Source on GitHub
                         </a>
                     </section>
