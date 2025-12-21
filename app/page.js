@@ -1,24 +1,27 @@
 import React from 'react';
-import Navbar from '@/Components/Navbar'; // Import Navbar
+import Navbar from '@/Components/Navbar'; 
 import Link from 'next/link';
-import { FaRobot, FaBolt, FaImage, FaCode, FaShieldHalved, FaGlobe, FaBrain, FaEye, FaWind, FaTerminal, FaGamepad, FaLeaf, FaSkull, FaCube } from "react-icons/fa6";
+import { FaRobot, FaBolt, FaImage, FaCode, FaShieldHalved, FaGlobe, FaBrain, FaEye, FaWind, FaTerminal, FaGamepad, FaLeaf, FaSkull, FaCube, FaCloud } from "react-icons/fa6";
 
 export default function LandingPage() {
   const models = ["openai", "deepseek", "gemini", 'mistral', "qwen-coder", "roblox-rp", "bidara", "evil", "unity"];
+  
   const getModelIcon = (modelName) => {
-    if (modelName.includes('openai')) return <FaBrain />;      // OpenAI -> Brain
-    if (modelName.includes('deepseek')) return <FaEye />;      // DeepSeek -> Eye
-    if (modelName.includes('gemini')) return <FaGlobe />;      // Gemini -> Google/Globe
-    if (modelName.includes('mistral')) return <FaWind />;      // Mistral -> Wind
-    if (modelName.includes('qwen')) return <FaTerminal />;     // Qwen Coder -> Terminal
-    if (modelName.includes('roblox')) return <FaGamepad />;    // Roblox -> Gamepad
-    if (modelName.includes('bidara')) return <FaLeaf />;       // Bidara -> Leaf (Nature)
-    if (modelName.includes('evil')) return <FaSkull />;        // Evil -> Skull
-    if (modelName.includes('unity')) return <FaCube />;        // Unity -> Cube (3D)
-    return <FaRobot />; // Default
+    if (modelName.includes('openai')) return <FaBrain />;
+    if (modelName.includes('deepseek')) return <FaEye />;
+    if (modelName.includes('gemini')) return <FaGlobe />;
+    if (modelName.includes('mistral')) return <FaWind />;
+    if (modelName.includes('qwen')) return <FaTerminal />;
+    if (modelName.includes('roblox')) return <FaGamepad />;
+    if (modelName.includes('bidara')) return <FaLeaf />;
+    if (modelName.includes('evil')) return <FaSkull />;
+    if (modelName.includes('unity')) return <FaCube />;
+    return <FaRobot />;
   };
+
   return (
     <div className="min-h-screen bg-[#121212] text-white">
+      {/* Navbar is imported, but we updated the content below to reflect Auth/DB changes */}
       <Navbar />
 
       {/* 1. HERO SECTION */}
@@ -28,14 +31,14 @@ export default function LandingPage() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500 "></span>
           </span>
-          v2.0 Now Available
+          v2.0 Now with Cloud Sync
         </div>
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-linear-to-r from-white via-gray-200 to-gray-500 bg-clip-text text-transparent">
+        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-gradient-to-r from-white via-gray-200 to-gray-500 bg-clip-text text-transparent">
           The Future of AI <br /> is Open & Free.
         </h1>
         <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed">
           FusionX aggregates the world's best AI models into one clean interface.
-          Access GPT-4, DeepSeek, Gemini, and Image generation tools without subscriptions.
+          Access GPT-4, DeepSeek, and Gemini. <strong>Sign in to sync your chats</strong> across devices.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link href="/chat" className="px-8 py-4 bg-white text-black rounded-xl font-bold text-lg hover:bg-gray-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)]">
@@ -47,16 +50,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 2. LIVE STATS / BRANDS (Visual Filler) */}
-      {/* Infinite Scrolling Marquee */}
+      {/* 2. LIVE STATS / BRANDS */}
       <div className="hover:border-violet-600/50 border-y border-gray-800 bg-black/20 py-8 overflow-hidden select-none relative">
-        {/* Left Fade Gradient */}
-        <div className="absolute inset-y-0 left-0 w-32 bg-linear-to-r from-[#171719] to-transparent z-10" />
-        {/* Right Fade Gradient */}
-        <div className="absolute inset-y-0 right-0 w-32 bg-linear-to-l from-[#171719] to-transparent z-10" />
+        <div className="absolute inset-y-0 left-0 w-32 bg-gradient-to-r from-[#171719] to-transparent z-10" />
+        <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-[#171719] to-transparent z-10" />
 
-        <div className="flex w-max animate-marquee gap-12 md:gap-24 opacity-50  transition-all duration-500">
-          {/* Duplicate list twice for seamless loop */}
+        <div className="flex w-max animate-marquee gap-12 md:gap-24 opacity-50 transition-all duration-500">
           {[...models, ...models, ...models].map((mod, i) => (
             <span key={i} className="text-xl font-bold flex items-center gap-3 uppercase grayscale hover:grayscale-0 tracking-widest text-violet-400">
               <span className="text-violet-500 text-2xl">
@@ -77,12 +76,12 @@ export default function LandingPage() {
 
         <div className="grid md:grid-cols-3 gap-8">
           {[
-            { icon: <FaRobot />, title: "Model Aggregation", desc: "Don't limit yourself to one AI. Switch between GPT-4o, Gemini Flash, and Llama 3 instantly to compare results." },
+            { icon: <FaRobot />, title: "Model Aggregation", desc: "Don't limit yourself to one AI. Switch between GPT-4o, Gemini Flash, and Llama 3 instantly." },
             { icon: <FaImage />, title: "Visual Creation", desc: "Describe your imagination and let Flux or Stable Diffusion generate high-quality images in seconds." },
-            { icon: <FaCode />, title: "Developer Friendly", desc: "Paste code snippets for debugging. Our specialized 'Coder' models help you fix bugs faster." },
-            { icon: <FaShieldHalved />, title: "Privacy First", desc: "We don't store your data. Your chat history lives in your browser and is deleted when you clear your cache." },
+            { icon: <FaCloud />, title: "Cloud Sync", desc: "Create an account to save your chat history securely to the cloud. Access your conversations on any device." }, // UPDATED
+            { icon: <FaShieldHalved />, title: "Privacy Choice", desc: "Don't want to sign in? No problem. Use Guest Mode and your data stays local to your browser." }, // UPDATED
             { icon: <FaBolt />, title: "Zero Latency", desc: "Powered by the Pollinations API, ensuring lightning-fast responses without the usual queue times." },
-            { icon: <FaGlobe />, title: "No Accounts", desc: "Stop signing up for waitlists. Open the site and start typing immediately. No email required." },
+            { icon: <FaGlobe />, title: "Optional Accounts", desc: "Stop forcing sign-ups. Use the site instantly as a guest, or log in only when you want to save history." }, // UPDATED
           ].map((item, i) => (
             <div key={i} className="p-8 bg-[#1B1B1F] rounded-2xl border border-gray-800 hover:border-violet-600/50 transition-all hover:-translate-y-1 group">
               <div className="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center text-violet-400 text-2xl mb-6 group-hover:bg-violet-600 group-hover:text-white transition-colors">
@@ -102,7 +101,7 @@ export default function LandingPage() {
           <div className="space-y-4">
             {[
               { q: "Is FusionX really free?", a: "Yes. We use the Pollinations.ai public API which provides free access to these models for educational and creative use." },
-              { q: "Do you save my chats?", a: "No. Your chats are stored in your browser's local storage (RAM) and are lost if you refresh, ensuring total privacy." },
+              { q: "Do you save my chats?", a: "It depends. If you are a Guest, chats are stored in your browser RAM. If you Sign In, chats are securely saved to our database." }, // UPDATED
               { q: "Can I generate NSFW images?", a: "We provide access to unfiltered models, but we encourage responsible usage. Check the model list for specific 'uncensored' tags." },
             ].map((faq, i) => (
               <details key={i} className="bg-[#212121] border border-gray-800 rounded-xl overflow-hidden group">

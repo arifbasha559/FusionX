@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.36.5",
+    "@clerk/themes": "^2.4.46",
+    "mongodb": "^7.0.0",
+    "mongoose": "^9.0.2",
     "nanoid": "^5.1.6",
     "next": "16.0.8",
     "react": "19.2.1",

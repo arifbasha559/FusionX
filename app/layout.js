@@ -1,5 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 
 export const metadata = {
   title: 'FusionX - Free AI Chatbot with Multi-Model Support',
@@ -9,11 +11,17 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body
-        cz-shortcut-listen="true">
-        {children}
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        theme:dark
+      }}>
+
+      <html lang="en">
+        <body
+          cz-shortcut-listen="true">
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

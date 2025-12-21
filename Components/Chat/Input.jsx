@@ -1,3 +1,4 @@
+"use client";
 import React, { useEffect, useRef, useState } from "react";
 import { BiMicrophone, BiImage, BiText, BiBot } from "react-icons/bi";
 import { FaStop } from "react-icons/fa6";

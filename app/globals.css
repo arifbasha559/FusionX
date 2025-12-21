@@ -24,10 +24,12 @@ body {
   scrollbar-gutter: stable;
 
 }
-*::selection{
+
+*::selection {
   background-color: #ffffff91;
   color: #000;
 }
+
 @theme {
   /* Define the animation name and duration */
   --animate-marquee: marquee 40s linear infinite;
@@ -42,4 +44,12 @@ body {
       transform: translateX(-33.33%);
     }
   }
+}
+
+.cl-userButtonPopoverFooter, .cl-internal-1dauvpw {
+  display: none !important;
+}
+
+.cl-badge {
+  display: none !important;
 }

@@ -2,7 +2,7 @@
 
 // 1. Unified POST Function (Best for 'openai', 'mistral', 'deepseek', etc.)
 // This supports conversation history (messages array)
-async function fetchAdvancedResponse(model, responseTime, messages) {
+async function fetchAdvancedResponse(model, responseTime, messages,input) {
     // The main endpoint for POST requests is usually just the root or specific to compatibility
     const API_URL = "https://text.pollinations.ai/";
 
@@ -20,7 +20,28 @@ async function fetchAdvancedResponse(model, responseTime, messages) {
         });
 
         if (!res.ok) {
-            if (res.status === 429) return "⚠️ Too many requests — Pollinations rate limit reached.";
+            if (res.status === 429) {
+                try {
+                    const API_URL_429 = `https://text.pollinations.ai/${encodeURIComponent(input)}?model=openai`;
+
+                    const res = await fetch(API_URL_429, {
+                        method: "GET",
+                    });
+
+                    if (!res.ok) {
+                        return `❌ Error ${res.status}: ${res.statusText}`;
+                    }
+
+                    // GET endpoint returns raw text, NOT JSON
+                    const text = await res.text();
+                    if (!text || text.trim() === "") return "⚠️ Empty response.";
+
+                    return text;
+                } catch (error) {
+                    console.error("❌ Pollinations GET Error after 429:", error);
+                    return "⚠️ Connection failed after rate limit.";
+                }
+            }
             if (res.status >= 500) return "⚠️ Pollinations server is currently unavailable.";
             return `❌ API Error ${res.status}: ${res.statusText}`;
         }
@@ -143,7 +164,7 @@ const fetchApi = (input, model, mode, responseTime, messages) => {
     else if (mode === "text" && model !== "openai") {
         return fetchSimpleResponse(input, model);
     }
-    return fetchAdvancedResponse(model, responseTime, messages);
+    return fetchAdvancedResponse(model, responseTime, messages, input);
 };
 // https://text.pollinations.ai/python?system="Act as a title maker (20 letter)"
 export const titleMaker = async (input) => {

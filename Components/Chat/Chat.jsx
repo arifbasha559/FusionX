@@ -1,3 +1,4 @@
+"use client";
 import React, { useEffect, useRef, useState, useMemo, memo } from "react";
 import Input from "./Input";
 import { FaRegCopy, FaRobot, FaUser, FaArrowDown, FaStop } from "react-icons/fa6";
@@ -10,6 +11,7 @@ import { BiImage } from "react-icons/bi";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
+import { useUser } from "@clerk/nextjs";
 
 // --- 1. New Loading Bubble Component ---
 const LoadingBubble = () => (
@@ -210,83 +212,152 @@ const Chat = () => {
     const [chatId, setChatId] = useState(() => {
         return routeId || nanoid();
     });
+    const { user, isSignedIn } = useUser();
+
+    // ... inside Chat.jsx ...
+
     useEffect(() => {
-        if (routeId) {
-            // We are looking at a specific chat
-            setChatId(routeId);
+        const loadChatData = async () => {
+            if (routeId) {
+                // 1. Sync the State ID with the URL ID
+                setChatId(routeId);
 
-            const savedChats = localStorage.getItem("chats");
-            if (savedChats) {
-                const parsedChats = JSON.parse(savedChats);
-                const currentChat = parsedChats.find(c => c.id === routeId);
-
-                if (currentChat) {
-                    setMessages(currentChat.messages);
-                    setModel(currentChat.model || models[0]);
-                } else {
-                    // URL ID exists but not found in storage (maybe deleted?)
-                    // Optional: Redirect to new chat or just start empty
-                    console.log("Chat ID not found in storage");
+                // 2. If User is Logged In -> Fetch from MongoDB
+                if (isSignedIn) {
+                    try {
+                        const res = await fetch(`/api/chat/${routeId}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.messages) {
+                                setMessages(data.messages);
+                                setModel(data.model || models[0]);
+                                return; // ✅ Exit early if DB load succeeds
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Failed to load from DB:", error);
+                    }
                 }
+
+                // 3. Fallback: Check LocalStorage (For guests or if DB fails)
+                const savedChats = localStorage.getItem("chats");
+                if (savedChats) {
+                    const parsedChats = JSON.parse(savedChats);
+                    const currentChat = parsedChats.find(c => c.id === routeId);
+
+                    if (currentChat) {
+                        setMessages(currentChat.messages);
+                        setModel(currentChat.model || models[0]);
+                    }
+                }
+            } else {
+                // 4. New Chat Logic
+                setChatId(nanoid());
+                setMessages([{ role: "system", content: "Hey there 👋! How can I help you today?", model: models[0] }]);
             }
-        } else {
-            // No ID in URL (Fresh Chat)
-            setChatId(Date.now().toString(36) + Math.random().toString(36).substr(2));
-            setMessages([{ role: "system", content: "Hey there 👋! How can I help you today?", model: models[0] }]);
-        }
-    }, [routeId]);
+        };
+
+        loadChatData();
+    }, [routeId, isSignedIn]); // <--- Added isSignedIn dependency
 
 
-    // --- NEW: Save to LocalStorage Effect ---
+
+    // Make sure you have this import at the top!
+
+    // ... inside your Chat component ...
+
     useEffect(() => {
         // 1. If messages are just the default welcome message, don't save yet
         if (messages.length <= 1) return;
 
-        // 2. Debounce saving to avoid performance hit during typing effect
-        // We wait 1 second after the last update before writing to localStorage
+        // 2. Debounce saving
         const timeoutId = setTimeout(async () => {
             try {
-                // Get existing chats
-                const savedChats = localStorage.getItem("chats");
-                const chats = savedChats ? JSON.parse(savedChats) : [];
-
-                // Find if this chat already exists in storage
-                const existingIndex = chats.findIndex((c) => c.id === chatId);
-
-                // Create the chat object
-                // We use the first user message as the title, or "New Chat" fallback
+                // --- A. PREPARE COMMON DATA ---
                 const firstUserMsg = messages.find(m => m.role === 'user');
-                const title = firstUserMsg ? await titleMaker(firstUserMsg.content) : "New Chat";
-                const currentChatData = {
-                    id: chatId,
+
+                // Note: Ensure titleMaker is defined in your component or imported
+                // Fallback to simple slice if titleMaker fails or isn't passed
+                let title = "New Chat";
+                if (firstUserMsg) {
+                    try {
+                        // Your existing custom title logic
+                        title = await titleMaker(firstUserMsg.content);
+                    } catch (err) {
+                        title = firstUserMsg.content.slice(0, 30);
+                    }
+                }
+
+                const chatData = {
+                    chatId: chatId, // This is your nanoid
                     title: title,
-                    messages: messages, // Save the full history
+                    messages: messages,
                     model: model,
                     lastUpdated: new Date().toISOString()
                 };
 
-                if (existingIndex !== -1) {
-                    // Update existing session
-                    chats[existingIndex] = currentChatData;
+                // --- B. BRANCHING LOGIC ---
+                if (isSignedIn) {
+                    // ------------------------------------------------
+                    // OPTION 1: LOGGED IN USER -> SAVE TO MONGODB
+                    // ------------------------------------------------
+                    const dbPayload = {
+                        ...chatData,
+                        userId: user.id, // Securely attach Clerk ID
+                    };
+                    console.log("Saving to DB:", dbPayload);
+
+                    const response = await fetch('/api/chat/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dbPayload),
+                    });
+
+                    if (response.ok) {
+                        window.dispatchEvent(new Event("chatListUpdated"));
+                    } else {
+                        console.error("Failed to sync with DB");
+                        console.error(response.status, response.statusText);
+                    }
+
                 } else {
-                    // Create new session (add to top)
-                    chats.unshift(currentChatData);
+                    // ------------------------------------------------
+                    // OPTION 2: GUEST -> SAVE TO LOCALSTORAGE
+                    // ------------------------------------------------
+                    const savedChats = localStorage.getItem("chats");
+                    const chats = savedChats ? JSON.parse(savedChats) : [];
+                    const existingIndex = chats.findIndex((c) => c.id === chatId);
+
+                    // Ensure object structure matches what Sidebar expects
+                    const localData = {
+                        id: chatId, // LocalStorage expects 'id', DB expects '_id' or 'chatId'
+                        ...chatData
+                    };
+
+                    if (existingIndex !== -1) {
+                        chats[existingIndex] = localData;
+                    } else {
+                        chats.unshift(localData);
+                    }
+
+                    localStorage.setItem("chats", JSON.stringify(chats));
+                    window.dispatchEvent(new Event("chatListUpdated"));
                 }
 
-                localStorage.setItem("chats", JSON.stringify(chats));
-
-                // --- ADD THIS LINE ---
-                window.dispatchEvent(new Event("chatListUpdated"));
-                // --------------------
+                // --- C. URL UPDATE (Common) ---
+                // If we are on a "new" URL but have now saved data, update the URL to the ID
+                // so a refresh doesn't lose context.
+                if (!routeId) {
+                    window.history.replaceState(null, '', `/chat/${chatId}`);
+                }
 
             } catch (error) {
                 console.error("Failed to save chat history:", error);
             }
         }, 1000); // 1s debounce
 
-        // Cleanup: If messages change again within 1s (fast typing), clear previous timer
         return () => clearTimeout(timeoutId);
-    }, [messages, chatId, model]);
+    }, [messages, chatId, model, isSignedIn, user]); // Added user dependencies
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -344,7 +415,7 @@ const Chat = () => {
             const cleanHistory = newHistory.map(({ role, content }) => ({ role, content }));
             const aiResponse = await fetchApi(input, currentModel, currentMode, responseTime, cleanHistory);
             console.log("AI Response:", aiResponse);
-            typeEffect(aiResponse, setMessages, 15, setIsTyping, typingIntervalRef, routeId, chatId);
+            typeEffect(aiResponse, setMessages, 5, setIsTyping, typingIntervalRef, routeId, chatId);
         } catch (err) {
             setMessages((prev) => [...prev.slice(0, -1), { role: "system", content: "⚠️ Failed to fetch response.", model: "error" }]);
             setIsTyping(false);
@@ -380,7 +451,7 @@ const Chat = () => {
     }), []);
 
     return (
-        <div className="flex flex-col relative md:h-screen h-[calc(100vh-64px)] max-w-full sm:max-w-xl md:max-w-3xl mx-auto">
+        <div className="flex flex-col relative  md:h-screen h-[calc(100dvh-40px)] max-w-full sm:max-w-xl md:max-w-3xl mx-auto">
             <div
                 ref={chatContainerRef}
                 onScroll={handleScroll}
@@ -406,23 +477,25 @@ const Chat = () => {
                 )}
                 <div ref={chatEndRef} />
             </div>
+            <div className=" w-full">
 
-            <div className="sticky bottom-0 bg-[#1B1B1F] pb-4 px-4 pt-2 border-t border-gray-800">
-                <Input
-                    input={input}
-                    setInput={setInput}
-                    handleSend={handleSend}
-                    handleKeyPress={handleKeyPress}
-                    model={model}
-                    models={models}
-                    setModel={setModel}
-                    mode={mode}
-                    setMode={setMode}
-                    responseTime={responseTime}
-                    setResponseTime={setResponseTime}
-                    isTyping={isTyping}
-                    stopGeneration={stopGeneration}
-                />
+                <div className="sticky w-full bottom-0 bg-[#1B1B1F] pb-4 px-4 pt-2 border-t border-gray-800">
+                    <Input
+                        input={input}
+                        setInput={setInput}
+                        handleSend={handleSend}
+                        handleKeyPress={handleKeyPress}
+                        model={model}
+                        models={models}
+                        setModel={setModel}
+                        mode={mode}
+                        setMode={setMode}
+                        responseTime={responseTime}
+                        setResponseTime={setResponseTime}
+                        isTyping={isTyping}
+                        stopGeneration={stopGeneration}
+                    />
+                </div>
             </div>
         </div>
     );
