@@ -101,7 +101,7 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
     const isThinking = msg.content === "Thinking 🤖...";
 
     return (
-        <div className={`flex gap-3 items-start ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+        <div className={`flex gap-3 items-start group/message ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "system" && (
                 <div className="flex flex-col items-center gap-1">
                     <div title={msg.model} className="bg-[#383840] mt-5 p-2 rounded-full rounded-tr-none shadow-md">
@@ -116,7 +116,7 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                     </span>
                 )}
 
-                <div className={`px-4 py-2 rounded-2xl max-w-full shadow-sm text-sm w-fit ${msg.role === "user" ? "bg-violet-600 text-white rounded-tr-none" : "bg-[#2E2E33] text-gray-100 rounded-tl-none"}`}>
+                <div className={`px-4 py-2 rounded-2xl max-w-full  shadow-sm text-sm w-fit ${msg.role === "user" ? "bg-violet-600 text-white rounded-tr-none" : "bg-[#2E2E33] text-gray-100 rounded-tl-none"}`}>
                     {isThinking ? (
                         <LoadingBubble />
                     ) : (
@@ -133,7 +133,7 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                 </div>
 
                 {index !== 0 && !isThinking && (
-                    <div className={`flex gap-3 mt-1 px-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`flex gap-3 group-hover/message:opacity-100 group-focus:opacity-100  opacity-0  mt-1 px-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                         <button onClick={() => { setCopiedIndex(index); copyToClipboard(msg.content); setTimeout(() => setCopiedIndex(null), 1000); }} className="text-gray-500 hover:text-white transition-colors text-sm" title="Copy message">
                             {copiedIndex === index ? <FaCopy /> : <FaRegCopy />}
                         </button>
@@ -147,7 +147,7 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                 )}
             </div>
             {msg.role === "user" && (
-                <div className="bg-[#2A2A2E] p-2 rounded-full rounded-tl-none mt-1"><FaUser className="text-white" /></div>
+                <div className="bg-[#2A2A2E] p-2 rounded-full rounded-tl-none "><FaUser className="text-white" /></div>
             )}
         </div>
     );

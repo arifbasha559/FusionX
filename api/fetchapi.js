@@ -91,7 +91,7 @@ async function fetchSimpleResponse(input, model) {
 
     } catch (error) {
         console.error("❌ Pollinations GET Error:", error);
-        return "⚠️ Connection failed.";
+        return fallbackApi(input);
     }
 }
 
@@ -133,7 +133,7 @@ async function fetchDeepseekResponse(input, model) {
 
     } catch (error) {
         console.error("❌ Pollinations GET Error:", error);
-        return "⚠️ Connection failed.";
+        return fallbackApi(input);
     }
 }
 
@@ -191,4 +191,21 @@ export const titleMaker = async (input) => {
         return "⚠️ Connection failed.";
     }
 }
+const fallbackApi = async (input) => {
+    console.log("Fallback API called for input:", input);
+    const API_URL = `https://text.pollinations.ai/${encodeURIComponent(input)}`;
+    try {
+        const res = await fetch(API_URL, {
+            method: "GET",
+        });
+        if (!res.ok) {
+            return `❌ Error ${res.status}: ${res.statusText}`;
+        }
+        const text = await res.text();
+        return text;
+    } catch (error) {
+        console.error("❌ Pollinations GET Error:", error);
+        return "⚠️ Connection failed.";
+    }
+};
 export default fetchApi;
