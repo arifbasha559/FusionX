@@ -1,211 +1,122 @@
 // src/api/fetchapi.js
+import { OpenRouter } from "@openrouter/sdk";
 
-// 1. Unified POST Function (Best for 'openai', 'mistral', 'deepseek', etc.)
-// This supports conversation history (messages array)
-async function fetchAdvancedResponse(model, responseTime, messages,input) {
-    // The main endpoint for POST requests is usually just the root or specific to compatibility
-    const API_URL = "https://text.pollinations.ai/";
+const client = new OpenRouter({
+  apiKey: process.env.REACT_APP_OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY,
+  defaultHeaders: {
+    'HTTP-Referer': 'http://localhost:3000',
+    'X-Title': 'My Chat App',
+  },
+});
 
+const resolveModel = (inputModel) => {
+    const modelMap = {
+        "openai": "openai/gpt-4o-mini",
+        "mistral": "mistralai/mistral-7b-instruct:free",
+        "deepseek": "deepseek/deepseek-r1:free",
+        "google": "google/gemini-2.0-flash-lite-preview-02-05:free",
+        "llama": "meta-llama/llama-3-8b-instruct:free",
+        "image": "bytedance-seed/seedream-4.5",
+        "image": "flux" 
+    };
+    return modelMap[inputModel] || inputModel;
+};
+
+// 1. TEXT STREAM
+async function* fetchOpenRouterTextStream(model, messages) {
     try {
-        const res = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                model: model, // Pass the model name here
-                reasoning_effort: responseTime,
-                messages: messages
-            }),
+        const stream = await client.chat.send({
+            model: model,
+            messages: messages,
+            stream: true, 
         });
 
-        if (!res.ok) {
-            if (res.status === 429) {
-                try {
-                    const API_URL_429 = `https://text.pollinations.ai/${encodeURIComponent(input)}?model=openai`;
-
-                    const res = await fetch(API_URL_429, {
-                        method: "GET",
-                    });
-
-                    if (!res.ok) {
-                        return fallbackApi(input);
-                    }
-
-                    // GET endpoint returns raw text, NOT JSON
-                    const text = await res.text();
-                    if (!text || text.trim() === "") return "⚠️ Empty response.";
-
-                    return text;
-                } catch (error) {
-                    console.error("❌ Pollinations GET Error after 429:", error);
-                    return "⚠️ Connection failed after rate limit.";
-                }
-            }
-            if (res.status >= 500 ) return "⚠️ Pollinations server is currently unavailable.";
-            return `❌ API Error ${res.status}: ${res.statusText}`;
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content;
+            if (content) yield content;
         }
-
-        // POST requests to Pollinations usually return the text directly, 
-        // OR sometimes OpenAI format depending on the specific endpoint configuration.
-        // Let's try to detect if it's JSON or Text.
-        const contentType = res.headers.get("content-type");
-
-        if (contentType && contentType.includes("application/json")) {
-            const json = await res.json();
-            // Handle OpenAI-like format
-            if (json.choices && json.choices.length > 0) {
-                return json.choices[0].message.content;
-            }
-            return JSON.stringify(json); // Fallback
-        } else {
-            // Plain text response
-            return await res.text();
-        }
-
     } catch (error) {
-        console.error("❌ Pollinations POST Error:", error);
-        return "⚠️ Unable to connect to Pollinations API.";
+        console.error("Text Stream Error:", error);
+        yield "⚠️ Error: Failed to generate text.";
     }
 }
 
-// 2. Simple GET Function (Legacy or simple prompts)
-async function fetchSimpleResponse(input, model) {
-    // Note: GET requests often don't support history/context
-    const API_URL = `https://text.pollinations.ai/${encodeURIComponent(input)}?model=${encodeURIComponent(model)}`;
-
+// 2. IMAGE GENERATION (Fixed for Base64 Return)
+async function* fetchPuterImage(prompt) {
     try {
-        const res = await fetch(API_URL, {
-            method: "GET",
-        });
-
-        if (!res.ok || res.status != 200) {
-            return fallbackApi(input);
+        if (!window.puter) {
+            yield "⚠️ Error: Puter.js not loaded.";
+            return;
         }
 
-        // GET endpoint returns raw text, NOT JSON
-        const text = await res.text();
-        if (!text || text.trim() === "") return "⚠️ Empty response.";
-
-        return text;
-
-    } catch (error) {
-        console.error("❌ Pollinations GET Error:", error);
-        return fallbackApi(input);
-    }
-}
-
-async function fetchDeepseekResponse(input, model) {
-    const API_URL = `https://text.pollinations.ai/${encodeURIComponent(input)}?model=${encodeURIComponent(model)}`;
-
-    try {
-        const res = await fetch(API_URL, {
-            method: "GET",
+        console.log("Generating image...");
+        
+        // 1. Call Puter
+        const result = await window.puter.ai.txt2img(prompt, { 
+            model: 'black-forest-labs/FLUX.1-schnell',
+            width: 512,  // <--- REDUCED SIZE (Default is usually 1024)
+            height: 512
         });
+        
+        // 2. ROBUST URL EXTRACTION
+        let imageUrl = "";
 
-        if (!res.ok || res.status != 200) {
-            return `❌ Error ${res.status}: ${res.statusText}`;
-        }
-
-        // 1. Get the raw response as text first (do not use res.json() immediately)
-        const rawText = await res.text();
-
-        // 2. Try to parse it as JSON
-        try {
-            const data = JSON.parse(rawText);
-
-            // Case A: It is a JSON object (like your first example)
-            // Check for 'reasoning_content' first, then 'content'
-            if (data.reasoning_content) {
-                return data.reasoning_content;
-            } else if (data.content) {
-                return data.content;
-            } else {
-                // If it's JSON but unexpected structure, return the whole thing
-                return rawText;
+        if (typeof result === 'string') {
+            // Case A: Puter returned the raw Base64 string directly
+            imageUrl = result;
+        } else if (result && result.src) {
+            // Case B: Puter returned an <img> element
+            imageUrl = result.src;
+        } else if (result && typeof result === 'object') {
+            // Case C: Puter returned a Blob or other object (fallback)
+            console.log("Unknown Puter response type:", result);
+            try {
+                imageUrl = URL.createObjectURL(result);
+            } catch (e) {
+                imageUrl = ""; 
             }
-
-        } catch (e) {
-            // Case B: It is NOT JSON (like your second example)
-            // The API just returned the answer directly as a string
-            return rawText;
         }
 
+        // 3. Validation
+        if (!imageUrl || !imageUrl.startsWith('data:')) {
+            console.error("Failed to extract image URL. Raw result:", result);
+            yield "⚠️ Error: Puter returned an unexpected format.";
+            return;
+        }
+
+        // 4. Yield Markdown
+        yield `![Generated Image](${imageUrl})`;
+
     } catch (error) {
-        console.error("❌ Pollinations GET Error:", error);
-        return fallbackApi(input);
+        console.error("Puter Image Error:", error);
+        yield `⚠️ Error: ${error.message}`;
     }
 }
 
-// 3. Image Generation Function
-async function fetchPollinationsImageResponse(prompt) {
-    // Corrected URL: 'image' not 'iamge'
-    // We add a random seed to ensure a new image is generated if the prompt is same
-    const seed = Math.floor(Math.random() * 10000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?nologo=true&seed=${seed}`;
-
-    // We don't need to fetch() the image data itself unless we want to download it.
-    // For a chat, we just want to display it.
-    // We return it as a Markdown Image syntax so ReactMarkdown renders it.
-
-    return `![Generated Image](${imageUrl})`;
-}
-
-
+// 3. MAIN EXPORT
 const fetchApi = (input, model, mode, responseTime, messages) => {
-    console.log("fetchApi called", { input, model, mode, responseTime });
+    const targetModel = resolveModel(model);
 
-    if (mode === "image") {
-        return fetchPollinationsImageResponse(input);
+    if (mode === "image" || model === "image" || model === "flux") {
+        return fetchPuterImage(input);
     }
-    else if (mode === "text" && model === "deepseek") {
-        return fetchDeepseekResponse(input, model);
-    }
-    else if (mode === "text" && model !== "openai") {
-        return fetchSimpleResponse(input, model);
-    }
-    return fetchAdvancedResponse(model, responseTime, messages, input);
+
+    return fetchOpenRouterTextStream(targetModel, messages);
 };
-// https://text.pollinations.ai/python?system="Act as a title maker (20 letter)"
-export const titleMaker = async (input) => {
-    const API_URL = `https://text.pollinations.ai/${encodeURIComponent(input)}?system="Act as a title maker (20 letter)"`;
 
+export const titleMaker = async (inputContent) => {
     try {
-        const res = await fetch(API_URL, {
-            method: "GET",
+        const completion = await client.chat.send({
+            model: "openai/gpt-4o-mini",
+            messages: [
+                { role: "system", content: "Act as a title maker. Create a concise title (max 30 chars). No quotes." },
+                { role: "user", content: typeof inputContent === 'string' ? inputContent : JSON.stringify(inputContent) }
+            ]
         });
-
-        if (!res.ok || res.status != 200) {
-            return input.content.slice(0, 30);
-        }
-
-        // 1. Get the raw response as text first (do not use res.json() immediately)
-        const rawText = await res.text();
-        console.log("titleMaker rawText:", rawText);
-        // 2. Try to parse it as JSON
-
-        return rawText;
-
+        return completion.choices[0]?.message?.content?.replace(/["']/g, "") || "New Chat";
     } catch (error) {
-        console.error("❌ Pollinations Title Creation Failed:", error);
-        return "⚠️ Connection failed.";
-    }
-}
-const fallbackApi = async (input) => {
-    console.log("Fallback API called for input:", input);
-    const API_URL = `https://text.pollinations.ai/${encodeURIComponent(input)}`;
-    try {
-        const res = await fetch(API_URL, {
-            method: "GET",
-        });
-        if (!res.ok) {
-            return `❌ Error ${res.status}: ${res.error}`;
-        }
-        const text = await res.text();
-        return text;
-    } catch (error) {
-        console.error("❌ Pollinations GET Error:", error);
-        return "⚠️ Connection failed.";
+        return "New Chat";
     }
 };
+
 export default fetchApi;

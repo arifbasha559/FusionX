@@ -11,10 +11,12 @@
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",
     "@clerk/themes": "^2.4.46",
+    "@openrouter/sdk": "^0.5.1",
+    "dotenv": "^17.2.3",
     "mongodb": "^7.0.0",
     "mongoose": "^9.0.2",
     "nanoid": "^5.1.6",
-    "next": "16.0.8",
+    "next": "^16.1.5",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-icons": "^5.5.0",

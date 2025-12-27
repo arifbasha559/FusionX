@@ -12,7 +12,7 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { useUser } from "@clerk/nextjs";
-import ChatLoader from '@/components/Chat/ChatLoader'; // Check your path
+import ChatLoader from '@/Components/Chat/ChatLoader'; // Check your path
 
 // --- 1. New Loading Bubble Component ---
 const LoadingBubble = () => (
@@ -26,6 +26,8 @@ const LoadingBubble = () => (
 // ... ImageRenderer & CodeBlock ...
 const ImageRenderer = ({ src, alt }) => {
     const [isLoading, setIsLoading] = useState(true);
+    if (!src || src === "") return null;
+    
     const handleDownload = async (e) => {
         e.stopPropagation();
         if (isLoading) return;
@@ -63,7 +65,7 @@ const ImageRenderer = ({ src, alt }) => {
                 unoptimized
                 style={{ width: 'auto', height: 'auto' }}
                 className={`transition-opacity duration-500 ease-in-out ${isLoading ? "opacity-0" : "opacity-100"} max-h-64 object-contain rounded-lg cursor-pointer hover:opacity-90`}
-                onLoadingComplete={() => setIsLoading(false)}
+                onLoad={() => setIsLoading(false)}
                 onClick={handleDownload}
                 title="Click to download"
             />
@@ -127,7 +129,7 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                             <div className="whitespace-pre-wrap">{msg.content.slice(0, -1)}<span className="animate-pulse">▋</span></div>
                         ) : (
                             msg.role === "system" ?
-                                <ReactMarkdown components={markdownComponents}>
+                                <ReactMarkdown components={markdownComponents} urlTransform={(value) => value}>
                                     {msg.content?.trim()}
                                 </ReactMarkdown>
                                 : msg.content
@@ -159,40 +161,7 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
 MessageItem.displayName = "MessageItem";
 
 // --- 3. Enhanced Type Effect ---
-function typeEffect(text, setMessages, delay = 10, setIsTyping, intervalRef, routeId, chatId) {
-    let i = 0;
-    if (intervalRef.current) clearInterval(intervalRef.current);
 
-    intervalRef.current = setInterval(() => {
-        setMessages((prev) => {
-            const lastIndex = prev.length - 1;
-            const lastMsg = prev[lastIndex];
-            const isTyping = i < text?.length;
-            const displayText = text?.slice(0, i) + (isTyping ? "▋" : "");
-
-            if (lastMsg.role === "system") {
-                const updated = [...prev];
-                updated[lastIndex] = { ...lastMsg, content: displayText };
-                return updated;
-            } else {
-                return [...prev, { role: "system", content: displayText }];
-            }
-        });
-
-        i++;
-
-        if (i > text?.length) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-            setIsTyping(false);
-            console.log(routeId, chatId)
-            if (!routeId) {
-                window.history.replaceState(null, "", `/chat/${chatId}`);
-
-            }
-        }
-    }, delay);
-}
 const sanitizeMessages = (msgs) => {
     if (!msgs) return [];
 
@@ -221,7 +190,7 @@ const Chat = () => {
     const params = useParams(); // 2. Get parameters
     const router = useRouter();
     const routeId = params?.id;
-    const models = ["openai", "deepseek", "gemini", 'mistral', "qwen-coder", "roblox-rp", "bidara", "evil", "unity"];
+    const models = ["openai","mistral","deepseek","google","llama"];
     const [input, setInput] = useState("");
     const [model, setModel] = useState(models[0]);
     const [messages, setMessages] = useState([
@@ -230,7 +199,7 @@ const Chat = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [mode, setMode] = useState("text");
     const [responseTime, setResponseTime] = useState('medium');
-
+    const [chatTitle, setChatTitle] = useState("");
     const [showScrollButton, setShowScrollButton] = useState(false);
     const chatEndRef = useRef(null);
     const chatContainerRef = useRef(null);
@@ -247,42 +216,44 @@ const Chat = () => {
 
     useEffect(() => {
         const loadChatData = async () => {
-            setIsLoadingHistory(true); // 1. Force loading start
+            setIsLoadingHistory(true);
 
             if (routeId) {
-                setChatId(routeId);
-                let dataLoaded = false; // Track if we found data
+                // ... setup chatId ...
+                let dataLoaded = false;
 
-                // --- OPTION A: If Logged In (Fetch from DB) ---
+                // --- OPTION A: DB Load ---
                 if (isSignedIn) {
                     try {
                         const res = await fetch(`/api/chat/${routeId}`);
                         if (res.ok) {
                             const data = await res.json();
                             if (data && data.messages) {
-                                const cleanMsgs = sanitizeMessages(data.messages);
-                                setMessages(cleanMsgs);
+                                // ... existing logic ...
+                                setMessages(sanitizeMessages(data.messages));
                                 setModel(data.model || models[0]);
-                                dataLoaded = true; // Mark as loaded
+                                
+                                // 2. SET TITLE FROM DB
+                                setChatTitle(data.title || ""); 
+                                dataLoaded = true;
                             }
                         }
-                    } catch (error) {
-                        console.error("Failed to load from DB:", error);
-                    }
+                    } catch (error) { console.error("Failed to load from DB:", error); }
                 }
 
-                // --- OPTION B: Guest / LocalStorage Fallback ---
-                // Only check local storage if DB didn't return anything
+                // --- OPTION B: LocalStorage Load ---
                 if (!dataLoaded) {
                     const savedChats = localStorage.getItem("chats");
                     if (savedChats) {
                         const parsedChats = JSON.parse(savedChats);
                         const currentChat = parsedChats.find(c => c.id === routeId);
-
                         if (currentChat) {
-                            const cleanMsgs = sanitizeMessages(currentChat.messages);
-                            setMessages(cleanMsgs);
+                            // ... existing logic ...
+                            setMessages(sanitizeMessages(currentChat.messages));
                             setModel(currentChat.model || models[0]);
+                            
+                            // 3. SET TITLE FROM LOCAL STORAGE
+                            setChatTitle(currentChat.title || ""); 
                         }
                     }
                 }
@@ -290,97 +261,74 @@ const Chat = () => {
                 // New Chat
                 setChatId(nanoid());
                 setMessages([{ role: "system", content: "Hey there 👋! How can I help you today?", model: models[0] }]);
+                
+                // 4. RESET TITLE FOR NEW CHAT
+                setChatTitle(""); 
             }
-
-            // 3. Turn off loading NO MATTER WHAT happens above
             setIsLoadingHistory(false);
         };
-
         loadChatData();
     }, [routeId, isSignedIn]);
 
 
-    useEffect(() => {
-        // 1. If messages are just the default welcome message, don't save yet
+   useEffect(() => {
         if (messages.length <= 1) return;
 
-        // 2. Debounce saving
         const timeoutId = setTimeout(async () => {
             try {
-                // --- A. PREPARE COMMON DATA ---
                 const firstUserMsg = messages.find(m => m.role === 'user');
+                
+                // 5. USE STATE INSTEAD OF RECALCULATING
+                let finalTitle = chatTitle; 
 
-                // Note: Ensure titleMaker is defined in your component or imported
-                // Fallback to simple slice if titleMaker fails or isn't passed
-                let title = "New Chat";
-                if (firstUserMsg) {
+                // 6. ONLY GENERATE IF TITLE IS MISSING OR DEFAULT
+                if ((!finalTitle || finalTitle === "New Chat") && firstUserMsg) {
                     try {
-                        // Your existing custom title logic
-                        title = await titleMaker(firstUserMsg.content);
+                        console.log("Generating Title..."); // Debugging to prove it only runs once
+                        finalTitle = await titleMaker(firstUserMsg.content);
                     } catch (err) {
-                        title = firstUserMsg.content.slice(0, 30);
+                        finalTitle = firstUserMsg.content.slice(0, 30);
                     }
+                    // Update state so it doesn't run again on next render
+                    setChatTitle(finalTitle); 
                 }
 
+                // Fallback if titleMaker failed or no user msg yet
+                if (!finalTitle) finalTitle = "New Chat";
+
                 const chatData = {
-                    chatId: chatId, // This is your nanoid
-                    title: title,
+                    chatId: chatId,
+                    title: finalTitle, // Use the variable, not the function call
                     messages: messages,
                     model: model,
                     lastUpdated: new Date().toISOString()
                 };
 
-                // --- B. BRANCHING LOGIC ---
+                // ... Rest of your saving logic (DB/LocalStorage) remains exactly the same ...
+                
                 if (isSignedIn) {
-                    // ------------------------------------------------
-                    // OPTION 1: LOGGED IN USER -> SAVE TO MONGODB
-                    // ------------------------------------------------
-                    const dbPayload = {
-                        ...chatData,
-                        userId: user.id, // Securely attach Clerk ID
-                    };
-                    console.log("Saving to DB:", dbPayload);
-
-                    const response = await fetch('/api/chat/save', {
+                     const dbPayload = { ...chatData, userId: user.id };
+                     await fetch('/api/chat/save', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dbPayload),
                     });
-
-                    if (response.ok) {
-                        window.dispatchEvent(new Event("chatListUpdated"));
-                    } else {
-                        console.error("Failed to sync with DB");
-                        console.error(response.status, response.statusText);
-                    }
-
+                    window.dispatchEvent(new Event("chatListUpdated"));
                 } else {
-                    // ------------------------------------------------
-                    // OPTION 2: GUEST -> SAVE TO LOCALSTORAGE
-                    // ------------------------------------------------
                     const savedChats = localStorage.getItem("chats");
                     const chats = savedChats ? JSON.parse(savedChats) : [];
                     const existingIndex = chats.findIndex((c) => c.id === chatId);
-
-                    // Ensure object structure matches what Sidebar expects
-                    const localData = {
-                        id: chatId, // LocalStorage expects 'id', DB expects '_id' or 'chatId'
-                        ...chatData
-                    };
+                    const localData = { id: chatId, ...chatData };
 
                     if (existingIndex !== -1) {
                         chats[existingIndex] = localData;
                     } else {
                         chats.unshift(localData);
                     }
-
                     localStorage.setItem("chats", JSON.stringify(chats));
                     window.dispatchEvent(new Event("chatListUpdated"));
                 }
 
-                // --- C. URL UPDATE (Common) ---
-                // If we are on a "new" URL but have now saved data, update the URL to the ID
-                // so a refresh doesn't lose context.
                 if (!routeId) {
                     window.history.replaceState(null, '', `/chat/${chatId}`);
                 }
@@ -388,11 +336,11 @@ const Chat = () => {
             } catch (error) {
                 console.error("Failed to save chat history:", error);
             }
-        }, 1000); // 1s debounce
+        }, 1000);
 
-        scrollToBottom();
         return () => clearTimeout(timeoutId);
-    }, [messages, chatId, model, isSignedIn, user]); // Added user dependencies
+    // 7. ADD chatTitle TO DEPENDENCY ARRAY
+    }, [messages, chatId, model, isSignedIn, user, chatTitle]); // Added user dependencies
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -410,69 +358,106 @@ const Chat = () => {
     };
 
 
-    const stopGeneration = () => {
-        if (typingIntervalRef.current) {
-            clearInterval(typingIntervalRef.current);
-            typingIntervalRef.current = null;
-        }
-        setIsTyping(false);
-
-        setMessages(prev => {
-            if (prev.length === 0) return prev;
-
-            const lastMsg = prev[prev.length - 1];
-
-            // Check if it's currently typing or thinking
-            if (lastMsg.role === 'system') {
-                const updated = [...prev];
-
-                // If it was just thinking and hadn't started typing yet
-                if (lastMsg.content === "Thinking 🤖...") {
-                    updated[updated.length - 1] = {
-                        ...lastMsg,
-                        content: "Generation stopped."
-                    };
-                }
-                // If it was in the middle of typing (indicated by the cursor block)
-                else if (lastMsg.content.endsWith("▋")) {
-                    updated[updated.length - 1] = {
-                        ...lastMsg,
-                        content: lastMsg.content.slice(0, -1) // Remove cursor
-                    };
-                }
-
-                return updated;
-            }
-            return prev;
-        });
-    };
-
+    
     const handleSend = async () => {
-        if (!input.trim() || isTyping) return;
+    if (!input.trim() || isTyping) return;
 
-        const currentModel = model;
-        const currentMode = mode;
-        const userMessage = { role: "user", content: input.trim() };
+    const currentModel = model;
+    const currentMode = mode;
+    const userMessage = { role: "user", content: input.trim() };
 
-        const newHistory = [...messages, userMessage];
-        setMessages(newHistory);
-        setInput("");
-        setTimeout(scrollToBottom, 50);
-        setIsTyping(true);
+    // 1. Add User Message
+    const newHistory = [...messages, userMessage];
+    setMessages(newHistory);
+    setInput("");
+    setTimeout(scrollToBottom, 50);
+    setIsTyping(true);
 
-        setMessages((prev) => [...prev, { role: "system", content: "Thinking 🤖...", model: currentModel, mode: currentMode }]);
+    // 2. Add Placeholder for AI Response (Empty at first)
+    setMessages((prev) => [
+        ...prev,
+        { role: "system", content: "", model: currentModel, mode: currentMode }
+    ]);
 
-        try {
-            const cleanHistory = newHistory.map(({ role, content }) => ({ role, content }));
-            const aiResponse = await fetchApi(input, currentModel, currentMode, responseTime, cleanHistory);
-            console.log("AI Response:", aiResponse);
-            typeEffect(aiResponse, setMessages, 5, setIsTyping, typingIntervalRef, routeId, chatId);
-        } catch (err) {
-            setMessages((prev) => [...prev.slice(0, -1), { role: "system", content: "⚠️ Failed to fetch response.", model: "error" }]);
-            setIsTyping(false);
+    try {
+        // 3. Call the API (Returns a Stream now!)
+        const cleanHistory = newHistory.map(({ role, content }) => ({ role, content }));
+        const stream = await fetchApi(input, currentModel, currentMode, responseTime, cleanHistory);
+
+        let fullContent = "";
+
+        // 4. Loop through the stream as chunks arrive
+        for await (const chunk of stream) {
+            // Check if user clicked "Stop"
+            if (!typingIntervalRef.current && fullContent.length > 0) break; 
+            
+            // Allow stopping by setting a flag (optional, see stop function below)
+            typingIntervalRef.current = true; 
+
+            fullContent += chunk;
+
+            // Update the LAST message with new content + Cursor
+            setMessages((prev) => {
+                const updated = [...prev];
+                const lastMsgIndex = updated.length - 1;
+                updated[lastMsgIndex] = {
+                    ...updated[lastMsgIndex],
+                    content: fullContent + "▋" // Add cursor
+                };
+                return updated;
+            });
+            
+            // Auto-scroll only if near bottom
+            if (chatContainerRef.current) {
+                 const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+                 if (scrollHeight - scrollTop - clientHeight < 150) {
+                     scrollToBottom();
+                 }
+            }
         }
-    };
 
+        // 5. Stream Finished: Remove Cursor
+        setMessages((prev) => {
+            const updated = [...prev];
+            const lastMsgIndex = updated.length - 1;
+            updated[lastMsgIndex] = {
+                ...updated[lastMsgIndex],
+                content: fullContent // Cursor removed
+            };
+            return updated;
+        });
+
+    } catch (err) {
+        console.error("Stream Error:", err);
+        setMessages((prev) => [
+            ...prev.slice(0, -1),
+            { role: "system", content: "⚠️ Failed to fetch response.", model: "error" }
+        ]);
+    } finally {
+        setIsTyping(false);
+        typingIntervalRef.current = null; // Reset stop flag
+    }
+};
+
+// 3. UPDATE the stopGeneration function
+const stopGeneration = () => {
+    // We use this ref as a "flag" to break the loop above
+    typingIntervalRef.current = false; 
+    setIsTyping(false);
+
+    // Remove cursor immediately
+    setMessages((prev) => {
+        const updated = [...prev];
+        const lastMsg = updated[updated.length - 1];
+        if (lastMsg.role === 'system' && lastMsg.content.endsWith("▋")) {
+            updated[updated.length - 1] = {
+                ...lastMsg,
+                content: lastMsg.content.slice(0, -1)
+            };
+        }
+        return updated;
+    });
+};
     const handleKeyPress = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -551,6 +536,7 @@ const Chat = () => {
                             index={i}
                             msg={msg}
                             markdownComponents={markdownComponents}
+                            
                             copyToClipboard={copyToClipboard}
                             copiedIndex={copiedIndex}
                             setCopiedIndex={setCopiedIndex}
