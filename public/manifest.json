@@ -1,0 +1,17 @@
+{
+  "name": "FusionX",
+  "short_name": "FusionX",
+  "theme_color": "#1B1B1F",
+  "background_color": "#1B1B1F",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

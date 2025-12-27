@@ -29,7 +29,7 @@ async function fetchAdvancedResponse(model, responseTime, messages,input) {
                     });
 
                     if (!res.ok) {
-                        return `❌ Error ${res.status}: ${res.statusText}`;
+                        return fallbackApi(input);
                     }
 
                     // GET endpoint returns raw text, NOT JSON
@@ -42,7 +42,7 @@ async function fetchAdvancedResponse(model, responseTime, messages,input) {
                     return "⚠️ Connection failed after rate limit.";
                 }
             }
-            if (res.status >= 500) return "⚠️ Pollinations server is currently unavailable.";
+            if (res.status >= 500 ) return "⚠️ Pollinations server is currently unavailable.";
             return `❌ API Error ${res.status}: ${res.statusText}`;
         }
 
@@ -79,8 +79,8 @@ async function fetchSimpleResponse(input, model) {
             method: "GET",
         });
 
-        if (!res.ok) {
-            return `❌ Error ${res.status}: ${res.statusText}`;
+        if (!res.ok || res.status != 200) {
+            return fallbackApi(input);
         }
 
         // GET endpoint returns raw text, NOT JSON
@@ -103,7 +103,7 @@ async function fetchDeepseekResponse(input, model) {
             method: "GET",
         });
 
-        if (!res.ok) {
+        if (!res.ok || res.status != 200) {
             return `❌ Error ${res.status}: ${res.statusText}`;
         }
 
@@ -175,8 +175,8 @@ export const titleMaker = async (input) => {
             method: "GET",
         });
 
-        if (!res.ok) {
-            return `❌ Error ${res.status}: ${res.statusText}`;
+        if (!res.ok || res.status != 200) {
+            return input.content.slice(0, 30);
         }
 
         // 1. Get the raw response as text first (do not use res.json() immediately)
@@ -199,7 +199,7 @@ const fallbackApi = async (input) => {
             method: "GET",
         });
         if (!res.ok) {
-            return `❌ Error ${res.status}: ${res.statusText}`;
+            return `❌ Error ${res.status}: ${res.error}`;
         }
         const text = await res.text();
         return text;

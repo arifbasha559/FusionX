@@ -116,7 +116,7 @@ const Input = ({
 
                             {/* Dropdown Menu */}
                             {activeMenu === 'model' && (
-                                <div className="absolute bottom-full left-0 mb-2 w-36 bg-[#1B1B1F] border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                                <div className="absolute bottom-full left-0 mb-2 w-36 bg-[#1B1B1F] border border-gray-700 rounded-lg shadow-xl overflow-hidden z-9999 animate-in fade-in zoom-in-95 duration-100">
                                     <div className="py-1"> {/* Added a wrapper div for padding control */}
                                         {models.map((mod, index) => (
                                             <React.Fragment key={index}>

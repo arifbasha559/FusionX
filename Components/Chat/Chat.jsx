@@ -6,12 +6,13 @@ import fetchApi, { titleMaker } from "../../api/fetchapi";
 import ReactMarkdown from "react-markdown";
 import { HiClipboardCheck, HiOutlineClipboardCopy } from "react-icons/hi";
 import { FaCopy } from "react-icons/fa";
-import { AiOutlineDislike, AiOutlineLike } from "react-icons/ai";
+import { AiFillDislike, AiFillLike, AiOutlineDislike, AiOutlineLike } from "react-icons/ai";
 import { BiImage } from "react-icons/bi";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { useUser } from "@clerk/nextjs";
+import ChatLoader from '@/components/Chat/ChatLoader'; // Check your path
 
 // --- 1. New Loading Bubble Component ---
 const LoadingBubble = () => (
@@ -46,11 +47,11 @@ const ImageRenderer = ({ src, alt }) => {
     };
 
     return (
-        <span className="relative block my-3 rounded-lg overflow-hidden border border-gray-700 bg-black/20 w-fit min-h-[100px]">
+        <span className="relative block my-3 rounded-lg overflow-hidden border border-gray-700 bg-black/20 w-fit min-w-[100px] min-h-[100px]">
             {isLoading && (
-                <span className="flex flex-col items-center justify-center h-48 w-64 bg-[#2A2A2E] animate-pulse absolute top-0 left-0 z-10">
+                <span className="flex flex-col items-center justify-center size-40  bg-[#2A2A2E] animate-pulse  z-10">
                     <BiImage className="text-3xl text-gray-500 mb-2" />
-                    <span className="text-xs text-gray-500 font-medium">Generating Image...</span>
+                    <span className="text-xs text-white font-medium">Generating Image...</span>
                 </span>
             )}
             <Image
@@ -99,6 +100,8 @@ const CodeBlock = ({ children }) => {
 // --- 2. Enhanced MessageItem ---
 const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, copiedIndex, setCopiedIndex }) => {
     const isThinking = msg.content === "Thinking 🤖...";
+    const [like, setLike] = useState(null);
+
 
     return (
         <div className={`flex gap-3 items-start group/message ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -125,7 +128,7 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                         ) : (
                             msg.role === "system" ?
                                 <ReactMarkdown components={markdownComponents}>
-                                    {msg.content}
+                                    {msg.content?.trim()}
                                 </ReactMarkdown>
                                 : msg.content
                         )
@@ -134,13 +137,14 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
 
                 {index !== 0 && !isThinking && (
                     <div className={`flex gap-3 group-hover/message:opacity-100 group-focus:opacity-100  opacity-0  mt-1 px-1 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                        <button onClick={() => { setCopiedIndex(index); copyToClipboard(msg.content); setTimeout(() => setCopiedIndex(null), 1000); }} className="text-gray-500 hover:text-white transition-colors text-sm" title="Copy message">
+                        {!msg.content.includes("![Generated Image]") && <button onClick={() => { setCopiedIndex(index); copyToClipboard(msg.content); setTimeout(() => setCopiedIndex(null), 1000); }} className="text-gray-500 hover:text-white transition-colors text-sm" title="Copy message">
                             {copiedIndex === index ? <FaCopy /> : <FaRegCopy />}
-                        </button>
+                        </button>}
                         {msg.role !== "user" && (
                             <>
-                                <button className="text-gray-500 hover:text-white transition-colors text-lg"><AiOutlineLike /></button>
-                                <button className="text-gray-500 hover:text-white transition-colors text-lg"><AiOutlineDislike /></button>
+                                <button onClick={() => setLike((prev)   => prev === null ? true : prev === true ? null : true)} className="text-gray-500 hover:text-white transition-colors text-lg">{like === true ? <AiFillLike /> : <AiOutlineLike />}</button>
+                                <button onClick={() => setLike((prev)   => prev === null ? false : prev === false ? null : false)} className="text-gray-500 hover:text-white transition-colors text-lg">{like === false ? <AiFillDislike /> : <AiOutlineDislike />}</button>
+
                             </>
                         )}
                     </div>
@@ -189,7 +193,30 @@ function typeEffect(text, setMessages, delay = 10, setIsTyping, intervalRef, rou
         }
     }, delay);
 }
+const sanitizeMessages = (msgs) => {
+    if (!msgs) return [];
 
+    return msgs.map((msg) => {
+        // Only check AI/System messages
+        if (msg.role === "system") {
+            // 1. If it's stuck on the Loading Bubble
+            if (msg.content === "Thinking 🤖...") {
+                return {
+                    ...msg,
+                    content: "Generation stopped (Reloaded while thinking)."
+                };
+            }
+            // 2. If it's stuck halfway through typing (has the cursor)
+            if (typeof msg.content === "string" && msg.content.endsWith("▋")) {
+                return {
+                    ...msg,
+                    content: msg.content.slice(0, -1) // Remove the cursor
+                };
+            }
+        }
+        return msg;
+    });
+};
 const Chat = () => {
     const params = useParams(); // 2. Get parameters
     const router = useRouter();
@@ -208,30 +235,35 @@ const Chat = () => {
     const chatEndRef = useRef(null);
     const chatContainerRef = useRef(null);
     const typingIntervalRef = useRef(null);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [copiedIndex, setCopiedIndex] = useState(null);
     const [chatId, setChatId] = useState(() => {
         return routeId || nanoid();
     });
     const { user, isSignedIn } = useUser();
 
+    const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     // ... inside Chat.jsx ...
 
     useEffect(() => {
         const loadChatData = async () => {
-            if (routeId) {
-                // 1. Sync the State ID with the URL ID
-                setChatId(routeId);
+            setIsLoadingHistory(true); // 1. Force loading start
 
-                // 2. If User is Logged In -> Fetch from MongoDB
+            if (routeId) {
+                setChatId(routeId);
+                let dataLoaded = false; // Track if we found data
+
+                // --- OPTION A: If Logged In (Fetch from DB) ---
                 if (isSignedIn) {
                     try {
                         const res = await fetch(`/api/chat/${routeId}`);
                         if (res.ok) {
                             const data = await res.json();
                             if (data && data.messages) {
-                                setMessages(data.messages);
+                                const cleanMsgs = sanitizeMessages(data.messages);
+                                setMessages(cleanMsgs);
                                 setModel(data.model || models[0]);
-                                return; // ✅ Exit early if DB load succeeds
+                                dataLoaded = true; // Mark as loaded
                             }
                         }
                     } catch (error) {
@@ -239,32 +271,34 @@ const Chat = () => {
                     }
                 }
 
-                // 3. Fallback: Check LocalStorage (For guests or if DB fails)
-                const savedChats = localStorage.getItem("chats");
-                if (savedChats) {
-                    const parsedChats = JSON.parse(savedChats);
-                    const currentChat = parsedChats.find(c => c.id === routeId);
+                // --- OPTION B: Guest / LocalStorage Fallback ---
+                // Only check local storage if DB didn't return anything
+                if (!dataLoaded) {
+                    const savedChats = localStorage.getItem("chats");
+                    if (savedChats) {
+                        const parsedChats = JSON.parse(savedChats);
+                        const currentChat = parsedChats.find(c => c.id === routeId);
 
-                    if (currentChat) {
-                        setMessages(currentChat.messages);
-                        setModel(currentChat.model || models[0]);
+                        if (currentChat) {
+                            const cleanMsgs = sanitizeMessages(currentChat.messages);
+                            setMessages(cleanMsgs);
+                            setModel(currentChat.model || models[0]);
+                        }
                     }
                 }
             } else {
-                // 4. New Chat Logic
+                // New Chat
                 setChatId(nanoid());
                 setMessages([{ role: "system", content: "Hey there 👋! How can I help you today?", model: models[0] }]);
             }
+
+            // 3. Turn off loading NO MATTER WHAT happens above
+            setIsLoadingHistory(false);
         };
 
         loadChatData();
-    }, [routeId, isSignedIn]); // <--- Added isSignedIn dependency
+    }, [routeId, isSignedIn]);
 
-
-
-    // Make sure you have this import at the top!
-
-    // ... inside your Chat component ...
 
     useEffect(() => {
         // 1. If messages are just the default welcome message, don't save yet
@@ -356,6 +390,7 @@ const Chat = () => {
             }
         }, 1000); // 1s debounce
 
+        scrollToBottom();
         return () => clearTimeout(timeoutId);
     }, [messages, chatId, model, isSignedIn, user]); // Added user dependencies
 
@@ -374,7 +409,6 @@ const Chat = () => {
         }
     };
 
-    const scrollToBottom = () => chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
     const stopGeneration = () => {
         if (typingIntervalRef.current) {
@@ -382,14 +416,31 @@ const Chat = () => {
             typingIntervalRef.current = null;
         }
         setIsTyping(false);
+
         setMessages(prev => {
+            if (prev.length === 0) return prev;
+
             const lastMsg = prev[prev.length - 1];
-            if (lastMsg.role === 'system' && lastMsg.content.endsWith("▋")) {
+
+            // Check if it's currently typing or thinking
+            if (lastMsg.role === 'system') {
                 const updated = [...prev];
-                updated[updated.length - 1] = {
-                    ...lastMsg,
-                    content: lastMsg.content.slice(0, -1)
-                };
+
+                // If it was just thinking and hadn't started typing yet
+                if (lastMsg.content === "Thinking 🤖...") {
+                    updated[updated.length - 1] = {
+                        ...lastMsg,
+                        content: "Generation stopped."
+                    };
+                }
+                // If it was in the middle of typing (indicated by the cursor block)
+                else if (lastMsg.content.endsWith("▋")) {
+                    updated[updated.length - 1] = {
+                        ...lastMsg,
+                        content: lastMsg.content.slice(0, -1) // Remove cursor
+                    };
+                }
+
                 return updated;
             }
             return prev;
@@ -430,9 +481,41 @@ const Chat = () => {
         }
     };
 
-    const copyToClipboard = async (text) => {
-        try { await navigator.clipboard.writeText(text); return true; } catch (err) { return false; }
-    };
+ const copyToClipboard = async (text) => {
+    // 1. Try the modern API first (if available and secure)
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (err) {
+            console.error("Modern copy failed:", err);
+            // Don't return false yet, try the fallback below
+        }
+    }
+
+    // 2. Fallback method for HTTP or older browsers
+    try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // Ensure the textarea is not visible but part of the DOM
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        return successful;
+    } catch (err) {
+        console.error("Fallback copy failed:", err);
+        return false;
+    }
+};
 
     const markdownComponents = useMemo(() => ({
         img: ImageRenderer,
@@ -452,34 +535,39 @@ const Chat = () => {
 
     return (
         <div className="flex flex-col relative  md:h-screen h-[calc(100dvh-40px)] max-w-full sm:max-w-xl md:max-w-3xl mx-auto">
+            <div className="absolute top-0 left-0 h-10 w-full   bg-linear-to-b from-[#1B1B1F] via-[#1B1B1F] to-transparent z-10" />
+
             <div
                 ref={chatContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 p-4 space-y-6 relative overflow-y-auto scrollbar [&::-webkit-scrollbar-button]:hidden"
-                style={{ scrollbarColor: '#ffffff55 #2A2A3025', scrollbarWidth: 'thin' }}
+                className="flex-1 px-4 pt-12 space-y-6  relative  overflow-y-auto scrollbar [&::-webkit-scrollbar-button]:hidden"
+                // style={{ scrollbarColor: '#ffffff15 #2A2A3015', scrollbarWidth: 'thin' }}
             >
-                {messages.map((msg, i) => (
-                    <MessageItem
-                        key={i}
-                        index={i}
-                        msg={msg}
-                        markdownComponents={markdownComponents}
-                        copyToClipboard={copyToClipboard}
-                        copiedIndex={copiedIndex}
-                        setCopiedIndex={setCopiedIndex}
-                    />
-                ))}
+                {isLoadingHistory ? (<ChatLoader />
+                ) : (
+                    messages.map((msg, i) => (
+                        <MessageItem
+                            key={i}
+                            index={i}
+                            msg={msg}
+                            markdownComponents={markdownComponents}
+                            copyToClipboard={copyToClipboard}
+                            copiedIndex={copiedIndex}
+                            setCopiedIndex={setCopiedIndex}
+                        />
+                    )))}
 
-                {showScrollButton && (
-                    <button onClick={scrollToBottom} className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg border border-gray-700 transition-all duration-200 z-50 animate-bounce-slow" title="Scroll to bottom">
-                        <FaArrowDown />
-                    </button>
-                )}
                 <div ref={chatEndRef} />
+                <div className="sticky bottom-0 left-0 h-20 w-full   bg-linear-to-t from-[#1B1B1F] to-transparent z-0" />
             </div>
+            {showScrollButton && (
+                <button onClick={scrollToBottom} className="absolute bottom-36 animate-bounce left-1/2 -translate-x-1/2 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg border border-gray-700 transition-all duration-200 z-50 animate-bounce-slow" title="Scroll to bottom">
+                    <FaArrowDown />
+                </button>
+            )}
             <div className=" w-full">
 
-                <div className="sticky w-full bottom-0 bg-[#1B1B1F] pb-4 px-4 pt-2 border-t border-gray-800">
+                <div className="sticky w-full bottom-0 z-9999 bg-[#1B1B1F] pb-4 px-4 pt-2 border-t border-gray-800">
                     <Input
                         input={input}
                         setInput={setInput}
