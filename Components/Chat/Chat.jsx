@@ -12,7 +12,7 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
 import { useUser } from "@clerk/nextjs";
-import ChatLoader from '@/components/Chat/ChatLoader'; // Check your path
+import ChatLoader from '@/Components/Chat/ChatLoader'; // Check your path
 
 // --- 1. New Loading Bubble Component ---
 const LoadingBubble = () => (
