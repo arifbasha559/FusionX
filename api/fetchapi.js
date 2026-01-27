@@ -2,11 +2,11 @@
 import { OpenRouter } from "@openrouter/sdk";
 
 const client = new OpenRouter({
-  apiKey: process.env.REACT_APP_OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY,
-  defaultHeaders: {
-    'HTTP-Referer': 'http://localhost:3000',
-    'X-Title': 'My Chat App',
-  },
+    apiKey: process.env.REACT_APP_OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY,
+    defaultHeaders: {
+        'HTTP-Referer': 'http://localhost:3000',
+        'X-Title': 'My Chat App',
+    },
 });
 
 const resolveModel = (inputModel) => {
@@ -17,7 +17,7 @@ const resolveModel = (inputModel) => {
         "google": "google/gemini-2.0-flash-lite-preview-02-05:free",
         "llama": "meta-llama/llama-3-8b-instruct:free",
         "image": "bytedance-seed/seedream-4.5",
-        "image": "flux" 
+        "image": "flux"
     };
     return modelMap[inputModel] || inputModel;
 };
@@ -28,7 +28,7 @@ async function* fetchOpenRouterTextStream(model, messages) {
         const stream = await client.chat.send({
             model: model,
             messages: messages,
-            stream: true, 
+            stream: true,
         });
 
         for await (const chunk of stream) {
@@ -42,55 +42,66 @@ async function* fetchOpenRouterTextStream(model, messages) {
 }
 
 // 2. IMAGE GENERATION (Fixed for Base64 Return)
-async function* fetchPuterImage(prompt) {
-    try {
-        if (!window.puter) {
-            yield "⚠️ Error: Puter.js not loaded.";
-            return;
-        }
+async function* fetchSafeImage(prompt) {
+    let imageUrl = "";
 
-        console.log("Generating image...");
-        
-        // 1. Call Puter
-        const result = await window.puter.ai.txt2img(prompt, { 
-            model: 'black-forest-labs/FLUX.1-schnell',
-            width: 512,  // <--- REDUCED SIZE (Default is usually 1024)
-            height: 512
-        });
-        
-        // 2. ROBUST URL EXTRACTION
-        let imageUrl = "";
-
-        if (typeof result === 'string') {
-            // Case A: Puter returned the raw Base64 string directly
-            imageUrl = result;
-        } else if (result && result.src) {
-            // Case B: Puter returned an <img> element
-            imageUrl = result.src;
-        } else if (result && typeof result === 'object') {
-            // Case C: Puter returned a Blob or other object (fallback)
-            console.log("Unknown Puter response type:", result);
-            try {
-                imageUrl = URL.createObjectURL(result);
-            } catch (e) {
-                imageUrl = ""; 
+    // --- ATTEMPT 1: Puter (Flux) ---
+    if (window.puter) {
+        try {
+            console.log("Attempt 1: Puter (Flux)...");
+            const result = await window.puter.ai.txt2img(prompt, {
+                model: 'black-forest-labs/FLUX.1-schnell',
+                width: 512,  // <--- REDUCED SIZE (Default is usually 1024)
+                height: 512
+            });
+            imageUrl = result?.src || result;
+            if (isValidImage(imageUrl)) {
+                yield `![Generated Image](${imageUrl})`;
+                return;
             }
+        } catch (e) {
+            console.warn("Puter Flux failed, trying SDXL...", e);
         }
 
-        // 3. Validation
-        if (!imageUrl || !imageUrl.startsWith('data:')) {
-            console.error("Failed to extract image URL. Raw result:", result);
-            yield "⚠️ Error: Puter returned an unexpected format.";
-            return;
+        // --- ATTEMPT 2: Puter (Stable Diffusion XL) ---
+        // SDXL is older but very stable/reliable
+        try {
+            console.log("Attempt 2: Puter (SDXL)...");
+            const result = await window.puter.ai.txt2img(prompt, {
+                model: 'stabilityai/stable-diffusion-xl-base-1.0',
+                width: 512,  // <--- REDUCED SIZE (Default is usually 1024)
+                height: 512
+            });
+            imageUrl = result?.src || result;
+            if (isValidImage(imageUrl)) {
+                yield `![Generated Image](${imageUrl})`;
+                return;
+            }
+        } catch (e) {
+            console.warn("Puter SDXL failed, switching to Pollinations...", e);
         }
-
-        // 4. Yield Markdown
-        yield `![Generated Image](${imageUrl})`;
-
-    } catch (error) {
-        console.error("Puter Image Error:", error);
-        yield `⚠️ Error: ${error.message}`;
+        try {
+            console.log("Attempt 3: Puter (SDXL)...");
+            const result = await window.puter.ai.txt2img(prompt, {
+                width: 512,  // <--- REDUCED SIZE (Default is usually 1024)
+                height: 512
+            });
+            imageUrl = result?.src || result;
+            if (isValidImage(imageUrl)) {
+                yield `![Generated Image](${imageUrl})`;
+                return;
+            }
+        } catch (e) {
+            console.warn("Puter SDXL failed, switching to Pollinations...", e);
+        }
     }
+
+
+}
+
+// Helper to check if URL looks valid
+function isValidImage(url) {
+    return url && typeof url === 'string' && (url.startsWith('http') || url.startsWith('data:'));
 }
 
 // 3. MAIN EXPORT
@@ -98,7 +109,7 @@ const fetchApi = (input, model, mode, responseTime, messages) => {
     const targetModel = resolveModel(model);
 
     if (mode === "image" || model === "image" || model === "flux") {
-        return fetchPuterImage(input);
+        return fetchSafeImage(input);
     }
 
     return fetchOpenRouterTextStream(targetModel, messages);
