@@ -190,7 +190,7 @@ const Chat = () => {
     const params = useParams(); // 2. Get parameters
     const router = useRouter();
     const routeId = params?.id;
-    const models = ["openai","mistral","deepseek","google","llama"];
+    const models = ["openai","mistral","deepseek","google","llama","Arcee","Z.AI","Nemotron","dolphin"];
     const [input, setInput] = useState("");
     const [model, setModel] = useState(models[0]);
     const [messages, setMessages] = useState([
@@ -507,7 +507,7 @@ const stopGeneration = () => {
         h1: (props) => <h1 className="text-xl font-bold text-violet-300 mt-3 mb-2" {...props} />,
         h2: (props) => <h2 className="text-lg font-semibold text-violet-300 mt-3 mb-1" {...props} />,
         h3: (props) => <h3 className="text-md font-semibold text-violet-200 my-2" {...props} />,
-        p: (props) => <p className="leading-relaxed mb-1" {...props} />,
+        p: (props) => <p className="leading-relaxed text-justify mb-1" {...props} />,
         ul: (props) => <ul className="list-disc list-inside ml-2 mb-2 space-y-1" {...props} />,
         ol: (props) => <ol className="list-decimal list-inside ml-2 mb-2" {...props} />,
         a: (props) => <a className="text-blue-400 hover:underline" target="_blank" rel="noreferrer" {...props} />,

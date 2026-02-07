@@ -122,7 +122,7 @@ const Input = ({
                                             <React.Fragment key={index}>
 
                                                 {/* LOGIC: Inject separator before the last 2 items */}
-                                                {index === models.length - 2 && (
+                                                {index === models.length - 1 && (
                                                     <div className="my-1 border-t border-gray-700/50 pt-1 pb-0.5">
                                                         <span className="px-3 text-[10px] font-bold text-red-400/80 uppercase tracking-widest select-none">
                                                             Explicit
@@ -159,7 +159,7 @@ const Input = ({
                             <button
                                 type="button"
                                 onClick={() => {
-                                    setMode('text')
+                                    setMode('text'), setModel(models[0])
                                 }}
                                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all ${mode === 'text' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
                                     }`}
@@ -169,7 +169,7 @@ const Input = ({
                             </button>
                             <button
                                 type="button"
-                                onClick={() => { setMode('image'), setModel(models[0]) }
+                                onClick={() => { setMode('image'), setModel("Flux") }
                                 }
                                 className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-all ${mode === 'image' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'
                                     }`}

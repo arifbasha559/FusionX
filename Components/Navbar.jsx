@@ -23,7 +23,7 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
           {/* GitHub Link */}
           <a 
-            href="https://github.com/yourusername" 
+            href="https://github.com/arifbasha559/FusionX" 
             target="_blank" 
             rel="noreferrer"
             className="text-gray-400 hover:text-white transition-colors text-xl"

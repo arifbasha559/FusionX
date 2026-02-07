@@ -2,17 +2,19 @@
 
 **FusionX** is a limitless, multi-model AI assistant built with **Next.js**. It serves as a unified interface for instantly switching between powerful LLMs and Image Generation models, providing completely free, unlimited access without logins or usage caps.
 
-> **Powered by [Pollinations.ai](https://pollinations.ai)**
+> **Powered by [OpenRouter.ai](https://openrouter.ai/)**
 
 ## 🚀 Features
 
 - **Multi-Model Intelligence:** Switch instantly between top-tier models:
-  - 🧠 **OpenAI** & **Gemini**
-  - ⚡ **Mistral** & **Bidara**
-  - 👁️ **DeepSeek** & **Qwen Coder**
-  - 🔓 **Uncensored/Raw Models** (Evil, Unity)
-- **Image Generation:** Create high-quality AI art using **flux**,**turbo** & **gptimage**.
-- **Privacy First:** Your chat history lives in your browser's local state. We do not store your messages on any server.
+ - **Multi-Model Intelligence:** Switch instantly between a curated set of powerful models:
+    - 🧠 OpenAI
+    - 👁️ DeepSeek
+    - ⚡ Mistral
+    - 🐑 Llama
+    - 🤖 Arcee, Z.AI, Nemotron, Dolphin
+- **Image Generation:** Create high-quality AI art using **flux**, **turbo** & **gptimage**.
+- **Privacy First & Sync:** By default guest chats live in your browser's local storage. If you sign in, chats can be securely synced to your account so you can access conversations across devices.
 - **Developer Friendly:**
   - Syntax highlighting for code blocks.
   - One-click code copying.
@@ -27,7 +29,7 @@
 - **Styling:** [Tailwind CSS](https://tailwindcss.com/)
 - **Icons:** [React Icons](https://react-icons.github.io/react-icons/) 
 - **Markdown Rendering:** `react-markdown`
-- **API:** [Pollinations.ai](https://github.com/pollinations/pollinations)
+- **API:** [OpenRouter.ai](https://openrouter.ai/)
 
 ## 📦 Installation
 
@@ -67,27 +69,25 @@ Follow these steps to run FusionX locally on your machine.
 ## 📂 Project Structure
 
 ```bash
-    src/
-    ├── app/
-    │   ├── layout.js      # Global layout (includes Navbar)
-    │   ├── page.js        # Landing Page
-    │   ├── chat/          # Main Chat Interface
-    │   ├── about/         # About Page
-    │   ├── contact/       # Contact Page
-    │   └── globals.css    # Global styles & Tailwind
-    ├── components/
-    │   ├── Navbar.jsx     # Sticky navigation
-    │   ├── Chat/
-    │       ├── Navbar.jsx    # Chat history sidebar
-    │       ├── Chat.jsx       # Core chat logic & UI
-    │       ├── Input.jsx      # Message input & model selector
-    │       └── ...
-    ├── api/
-    │   └── fetchapi.js    # API wrapper for Pollinations
-    └── assets/
-        ├── brain-circuit.png  # Logo
-        └── brain-circuit.svg  # Logo
-
+app/
+├── about/              # About page
+├── chat/               # Main chat interface
+├── globals.css         # Global styles & Tailwind
+├── layout.js           # Global layout (includes Navbar)
+├── page.js             # Landing page
+Components/
+├── Navbar.jsx          # Sticky navigation used across app
+├── Chat/
+│   ├── Navbar.jsx      # Chat sidebar / history
+│   ├── Chat.jsx        # Core chat logic & UI
+│   ├── Input.jsx       # Message input & model selector
+api/
+├── fetchapi.js         # API wrapper for OpenRouter (server routes)
+assets/
+├── brain-circuit.png
+├── brain-circuit.svg
+public/
+└── ...
 ```
 
 ---
@@ -96,10 +96,10 @@ Follow these steps to run FusionX locally on your machine.
 
 ### Changing Models
 
-You can add or remove models in `src/components/Chat.jsx`:
+You can add or remove models in `Components/Chat/Chat.jsx` (or the `models` array used by the chat component):
 
 ```javascript
-const models = ["openai", "deepseek", "gemini", "mistral", ...];
+const models = ["openai", "mistral", "deepseek", "google", "llama", "Arcee", "Z.AI", "Nemotron", "dolphin"];
 ```
 
 ### Theming
@@ -122,8 +122,8 @@ Distributed under the **MIT License**. See `LICENSE` for more information.
 
 ## 🙏 Acknowledgements
 
-- Big thanks to the team at **Pollinations.ai** for providing the free API that powers this project.
-- Built with ❤️ by [Your Name].
+- Big thanks to the team at **OpenRouter.ai** for providing the free API that powers this project.
+- Built with ❤️ by Arif's Team.
 
 ---
 
