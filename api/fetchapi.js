@@ -2,11 +2,11 @@
 import { OpenRouter } from "@openrouter/sdk";
 
 const client = new OpenRouter({
-    apiKey: process.env.REACT_APP_OPENROUTER_API_KEY || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY,
+    apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY,
     defaultHeaders: {
-        'HTTP-Referer': 'http://localhost:3000',
-        'X-Title': 'My Chat App',
-    },
+    'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://fusionx.netlify.app',
+    'X-Title': 'My Chat App',
+},
 });
 
 const resolveModel = (inputModel) => {
@@ -110,6 +110,7 @@ function isValidImage(url) {
 
 // 3. MAIN EXPORT
 const fetchApi = (input, model, mode, responseTime, messages) => {
+    console.log("Key available:",process.env.NEXT_PUBLIC_OPENROUTER_API_KEY);
     const targetModel = resolveModel(model);
 
     if (mode === "image" || model === "image" || model === "flux") {
