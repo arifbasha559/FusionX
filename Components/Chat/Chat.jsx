@@ -27,7 +27,7 @@ const LoadingBubble = () => (
 const ImageRenderer = ({ src, alt }) => {
     const [isLoading, setIsLoading] = useState(true);
     if (!src || src === "") return null;
-    
+
     const handleDownload = async (e) => {
         e.stopPropagation();
         if (isLoading) return;
@@ -144,8 +144,8 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                         </button>}
                         {msg.role !== "user" && (
                             <>
-                                <button onClick={() => setLike((prev)   => prev === null ? true : prev === true ? null : true)} className="text-gray-500 hover:text-white transition-colors text-lg">{like === true ? <AiFillLike /> : <AiOutlineLike />}</button>
-                                <button onClick={() => setLike((prev)   => prev === null ? false : prev === false ? null : false)} className="text-gray-500 hover:text-white transition-colors text-lg">{like === false ? <AiFillDislike /> : <AiOutlineDislike />}</button>
+                                <button onClick={() => setLike((prev) => prev === null ? true : prev === true ? null : true)} className="text-gray-500 hover:text-white transition-colors text-lg">{like === true ? <AiFillLike /> : <AiOutlineLike />}</button>
+                                <button onClick={() => setLike((prev) => prev === null ? false : prev === false ? null : false)} className="text-gray-500 hover:text-white transition-colors text-lg">{like === false ? <AiFillDislike /> : <AiOutlineDislike />}</button>
 
                             </>
                         )}
@@ -190,7 +190,7 @@ const Chat = () => {
     const params = useParams(); // 2. Get parameters
     const router = useRouter();
     const routeId = params?.id;
-    const models = ["openai","mistral","deepseek","google","llama","Arcee","Z.AI","Nemotron","dolphin"];
+    const models = ["openai", "stepfun", "deepseek", "llama", "Arcee", "Z.AI", "Nemotron", "dolphin"];
     const [input, setInput] = useState("");
     const [model, setModel] = useState(models[0]);
     const [messages, setMessages] = useState([
@@ -232,9 +232,9 @@ const Chat = () => {
                                 // ... existing logic ...
                                 setMessages(sanitizeMessages(data.messages));
                                 setModel(data.model || models[0]);
-                                
+
                                 // 2. SET TITLE FROM DB
-                                setChatTitle(data.title || ""); 
+                                setChatTitle(data.title || "");
                                 dataLoaded = true;
                             }
                         }
@@ -251,9 +251,9 @@ const Chat = () => {
                             // ... existing logic ...
                             setMessages(sanitizeMessages(currentChat.messages));
                             setModel(currentChat.model || models[0]);
-                            
+
                             // 3. SET TITLE FROM LOCAL STORAGE
-                            setChatTitle(currentChat.title || ""); 
+                            setChatTitle(currentChat.title || "");
                         }
                     }
                 }
@@ -261,9 +261,9 @@ const Chat = () => {
                 // New Chat
                 setChatId(nanoid());
                 setMessages([{ role: "system", content: "Hey there 👋! How can I help you today?", model: models[0] }]);
-                
+
                 // 4. RESET TITLE FOR NEW CHAT
-                setChatTitle(""); 
+                setChatTitle("");
             }
             setIsLoadingHistory(false);
         };
@@ -271,15 +271,15 @@ const Chat = () => {
     }, [routeId, isSignedIn]);
 
 
-   useEffect(() => {
+    useEffect(() => {
         if (messages.length <= 1) return;
 
         const timeoutId = setTimeout(async () => {
             try {
                 const firstUserMsg = messages.find(m => m.role === 'user');
-                
+
                 // 5. USE STATE INSTEAD OF RECALCULATING
-                let finalTitle = chatTitle; 
+                let finalTitle = chatTitle;
 
                 // 6. ONLY GENERATE IF TITLE IS MISSING OR DEFAULT
                 if ((!finalTitle || finalTitle === "New Chat") && firstUserMsg) {
@@ -290,7 +290,7 @@ const Chat = () => {
                         finalTitle = firstUserMsg.content.slice(0, 30);
                     }
                     // Update state so it doesn't run again on next render
-                    setChatTitle(finalTitle); 
+                    setChatTitle(finalTitle);
                 }
 
                 // Fallback if titleMaker failed or no user msg yet
@@ -305,10 +305,10 @@ const Chat = () => {
                 };
 
                 // ... Rest of your saving logic (DB/LocalStorage) remains exactly the same ...
-                
+
                 if (isSignedIn) {
-                     const dbPayload = { ...chatData, userId: user.id };
-                     await fetch('/api/chat/save', {
+                    const dbPayload = { ...chatData, userId: user.id };
+                    await fetch('/api/chat/save', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dbPayload),
@@ -339,7 +339,7 @@ const Chat = () => {
         }, 1000);
 
         return () => clearTimeout(timeoutId);
-    // 7. ADD chatTitle TO DEPENDENCY ARRAY
+        // 7. ADD chatTitle TO DEPENDENCY ARRAY
     }, [messages, chatId, model, isSignedIn, user, chatTitle]); // Added user dependencies
 
     useEffect(() => {
@@ -358,106 +358,106 @@ const Chat = () => {
     };
 
 
-    
+
     const handleSend = async () => {
-    if (!input.trim() || isTyping) return;
+        if (!input.trim() || isTyping) return;
 
-    const currentModel = model;
-    const currentMode = mode;
-    const userMessage = { role: "user", content: input.trim() };
+        const currentModel = model;
+        const currentMode = mode;
+        const userMessage = { role: "user", content: input.trim() };
 
-    // 1. Add User Message
-    const newHistory = [...messages, userMessage];
-    setMessages(newHistory);
-    setInput("");
-    setTimeout(scrollToBottom, 50);
-    setIsTyping(true);
+        // 1. Add User Message
+        const newHistory = [...messages, userMessage];
+        setMessages(newHistory);
+        setInput("");
+        setTimeout(scrollToBottom, 50);
+        setIsTyping(true);
 
-    // 2. Add Placeholder for AI Response (Empty at first)
-    setMessages((prev) => [
-        ...prev,
-        { role: "system", content: "", model: currentModel, mode: currentMode }
-    ]);
+        // 2. Add Placeholder for AI Response (Empty at first)
+        setMessages((prev) => [
+            ...prev,
+            { role: "system", content: "", model: currentModel, mode: currentMode }
+        ]);
 
-    try {
-        // 3. Call the API (Returns a Stream now!)
-        const cleanHistory = newHistory.map(({ role, content }) => ({ role, content }));
-        const stream = await fetchApi(input, currentModel, currentMode, responseTime, cleanHistory);
+        try {
+            // 3. Call the API (Returns a Stream now!)
+            const cleanHistory = newHistory.map(({ role, content }) => ({ role, content }));
+            const stream = await fetchApi(input, currentModel, currentMode, responseTime, cleanHistory);
 
-        let fullContent = "";
+            let fullContent = "";
 
-        // 4. Loop through the stream as chunks arrive
-        for await (const chunk of stream) {
-            // Check if user clicked "Stop"
-            if (!typingIntervalRef.current && fullContent.length > 0) break; 
-            
-            // Allow stopping by setting a flag (optional, see stop function below)
-            typingIntervalRef.current = true; 
+            // 4. Loop through the stream as chunks arrive
+            for await (const chunk of stream) {
+                // Check if user clicked "Stop"
+                if (!typingIntervalRef.current && fullContent.length > 0) break;
 
-            fullContent += chunk;
+                // Allow stopping by setting a flag (optional, see stop function below)
+                typingIntervalRef.current = true;
 
-            // Update the LAST message with new content + Cursor
+                fullContent += chunk;
+
+                // Update the LAST message with new content + Cursor
+                setMessages((prev) => {
+                    const updated = [...prev];
+                    const lastMsgIndex = updated.length - 1;
+                    updated[lastMsgIndex] = {
+                        ...updated[lastMsgIndex],
+                        content: fullContent + "▋" // Add cursor
+                    };
+                    return updated;
+                });
+
+                // Auto-scroll only if near bottom
+                if (chatContainerRef.current) {
+                    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+                    if (scrollHeight - scrollTop - clientHeight < 150) {
+                        scrollToBottom();
+                    }
+                }
+            }
+
+            // 5. Stream Finished: Remove Cursor
             setMessages((prev) => {
                 const updated = [...prev];
                 const lastMsgIndex = updated.length - 1;
                 updated[lastMsgIndex] = {
                     ...updated[lastMsgIndex],
-                    content: fullContent + "▋" // Add cursor
+                    content: fullContent // Cursor removed
                 };
                 return updated;
             });
-            
-            // Auto-scroll only if near bottom
-            if (chatContainerRef.current) {
-                 const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-                 if (scrollHeight - scrollTop - clientHeight < 150) {
-                     scrollToBottom();
-                 }
-            }
-        }
 
-        // 5. Stream Finished: Remove Cursor
+        } catch (err) {
+            console.error("Stream Error:", err);
+            setMessages((prev) => [
+                ...prev.slice(0, -1),
+                { role: "system", content: "⚠️ Failed to fetch response.", model: "error" }
+            ]);
+        } finally {
+            setIsTyping(false);
+            typingIntervalRef.current = null; // Reset stop flag
+        }
+    };
+
+    // 3. UPDATE the stopGeneration function
+    const stopGeneration = () => {
+        // We use this ref as a "flag" to break the loop above
+        typingIntervalRef.current = false;
+        setIsTyping(false);
+
+        // Remove cursor immediately
         setMessages((prev) => {
             const updated = [...prev];
-            const lastMsgIndex = updated.length - 1;
-            updated[lastMsgIndex] = {
-                ...updated[lastMsgIndex],
-                content: fullContent // Cursor removed
-            };
+            const lastMsg = updated[updated.length - 1];
+            if (lastMsg.role === 'system' && lastMsg.content.endsWith("▋")) {
+                updated[updated.length - 1] = {
+                    ...lastMsg,
+                    content: lastMsg.content.slice(0, -1)
+                };
+            }
             return updated;
         });
-
-    } catch (err) {
-        console.error("Stream Error:", err);
-        setMessages((prev) => [
-            ...prev.slice(0, -1),
-            { role: "system", content: "⚠️ Failed to fetch response.", model: "error" }
-        ]);
-    } finally {
-        setIsTyping(false);
-        typingIntervalRef.current = null; // Reset stop flag
-    }
-};
-
-// 3. UPDATE the stopGeneration function
-const stopGeneration = () => {
-    // We use this ref as a "flag" to break the loop above
-    typingIntervalRef.current = false; 
-    setIsTyping(false);
-
-    // Remove cursor immediately
-    setMessages((prev) => {
-        const updated = [...prev];
-        const lastMsg = updated[updated.length - 1];
-        if (lastMsg.role === 'system' && lastMsg.content.endsWith("▋")) {
-            updated[updated.length - 1] = {
-                ...lastMsg,
-                content: lastMsg.content.slice(0, -1)
-            };
-        }
-        return updated;
-    });
-};
+    };
     const handleKeyPress = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -466,56 +466,91 @@ const stopGeneration = () => {
         }
     };
 
- const copyToClipboard = async (text) => {
-    // 1. Try the modern API first (if available and secure)
-    if (navigator.clipboard && window.isSecureContext) {
-        try {
-            await navigator.clipboard.writeText(text);
-            return true;
-        } catch (err) {
-            console.error("Modern copy failed:", err);
-            // Don't return false yet, try the fallback below
+    const copyToClipboard = async (text) => {
+        // 1. Try the modern API first (if available and secure)
+        if (navigator.clipboard && window.isSecureContext) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (err) {
+                console.error("Modern copy failed:", err);
+                // Don't return false yet, try the fallback below
+            }
         }
-    }
 
-    // 2. Fallback method for HTTP or older browsers
-    try {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        
-        // Ensure the textarea is not visible but part of the DOM
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        textArea.style.top = "0";
-        document.body.appendChild(textArea);
-        
-        textArea.focus();
-        textArea.select();
-        
-        const successful = document.execCommand('copy');
-        document.body.removeChild(textArea);
-        
-        return successful;
-    } catch (err) {
-        console.error("Fallback copy failed:", err);
-        return false;
-    }
-};
+        // 2. Fallback method for HTTP or older browsers
+        try {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+
+            // Ensure the textarea is not visible but part of the DOM
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            document.body.appendChild(textArea);
+
+            textArea.focus();
+            textArea.select();
+
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            return successful;
+        } catch (err) {
+            console.error("Fallback copy failed:", err);
+            return false;
+        }
+    };
 
     const markdownComponents = useMemo(() => ({
         img: ImageRenderer,
-        h1: (props) => <h1 className="text-xl font-bold text-violet-300 mt-3 mb-2" {...props} />,
-        h2: (props) => <h2 className="text-lg font-semibold text-violet-300 mt-3 mb-1" {...props} />,
-        h3: (props) => <h3 className="text-md font-semibold text-violet-200 my-2" {...props} />,
-        p: (props) => <p className="leading-relaxed text-justify mb-1" {...props} />,
-        ul: (props) => <ul className="list-disc list-inside ml-2 mb-2 space-y-1" {...props} />,
-        ol: (props) => <ol className="list-decimal list-inside ml-2 mb-2" {...props} />,
-        a: (props) => <a className="text-blue-400 hover:underline" target="_blank" rel="noreferrer" {...props} />,
-        code: ({ inline, children, ...props }) => inline ? <code className="bg-gray-800 rounded px-1.5 py-0.5 text-xs font-mono text-violet-200" {...props}>{children}</code> : <CodeBlock>{children}</CodeBlock>,
-        table: (props) => <div className="overflow-x-auto my-3"><table className="min-w-full border border-gray-700 text-sm" {...props} /></div>,
-        thead: (props) => <thead className="bg-gray-800" {...props} />,
-        th: (props) => <th className="px-3 py-2 text-left font-semibold text-gray-200 border-b border-gray-700" {...props} />,
-        td: (props) => <td className="px-3 py-2 border-b border-gray-700 text-gray-300" {...props} />,
+        h1: (props) => <h1 className="text-xl font-bold text-violet-300 mt-6 mb-3" {...props} />,
+        h2: (props) => <h2 className="text-lg font-semibold text-violet-300 mt-5 mb-2" {...props} />,
+        h3: (props) => <h3 className="text-md font-semibold text-violet-200 mt-4 mb-2" {...props} />,
+        p: (props) => <p className="leading-relaxed text-gray-300 mb-3" {...props} />,
+        ul: (props) => <ul className="list-disc list-inside ml-2 mb-4 space-y-1 text-gray-300" {...props} />,
+        ol: (props) => <ol className="list-decimal list-inside ml-2 mb-4 text-gray-300" {...props} />,
+        a: (props) => <a className="text-blue-400 hover:text-blue-300 hover:underline transition-colors" target="_blank" rel="noreferrer" {...props} />,
+        code: ({ inline, children, ...props }) => inline
+            ? <code className="bg-gray-800/80 rounded px-1.5 py-0.5 text-xs font-mono text-violet-200 border border-gray-700/50" {...props}>{children}</code>
+            : <CodeBlock>{children}</CodeBlock>,
+
+        // --- TABLE UPGRADES START HERE ---
+        table: (props) => (
+            <div className="my-6 rounded-lg border border-gray-800 overflow-hidden bg-gray-900/50">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm text-left text-gray-400" {...props} />
+                </div>
+            </div>
+        ),
+        thead: (props) => (
+            <thead
+                className="text-xs text-gray-400 uppercase bg-gray-900 border-b border-gray-800"
+                {...props}
+            />
+        ),
+        tbody: (props) => (
+            <tbody className="divide-y divide-gray-800" {...props} />
+        ),
+        tr: (props) => (
+            <tr className="hover:bg-gray-800/40 transition-colors duration-200" {...props} />
+        ),
+        th: (props) => (
+            <th
+                scope="col"
+                // whitespace-nowrap forces the table to be wide, triggering the clean scroll
+                className="px-6 py-4 font-semibold tracking-wider text-gray-200 whitespace-nowrap"
+                {...props}
+            />
+        ),
+        td: (props) => (
+            <td
+                // Removed font-medium for a cleaner look
+                // min-w-[min-content] ensures cells don't squish too much
+                className="px-6 py-4 font-normal text-gray-300 align-top leading-relaxed"
+                {...props}
+            />
+        ),
     }), []);
 
     return (
@@ -526,7 +561,7 @@ const stopGeneration = () => {
                 ref={chatContainerRef}
                 onScroll={handleScroll}
                 className="flex-1 px-4 pt-12 space-y-6  relative  overflow-y-auto scrollbar [&::-webkit-scrollbar-button]:hidden"
-                // style={{ scrollbarColor: '#ffffff15 #2A2A3015', scrollbarWidth: 'thin' }}
+            // style={{ scrollbarColor: '#ffffff15 #2A2A3015', scrollbarWidth: 'thin' }}
             >
                 {isLoadingHistory ? (<ChatLoader />
                 ) : (
@@ -536,7 +571,7 @@ const stopGeneration = () => {
                             index={i}
                             msg={msg}
                             markdownComponents={markdownComponents}
-                            
+
                             copyToClipboard={copyToClipboard}
                             copiedIndex={copiedIndex}
                             setCopiedIndex={setCopiedIndex}

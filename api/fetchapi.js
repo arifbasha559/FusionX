@@ -12,10 +12,9 @@ const client = new OpenRouter({
 const resolveModel = (inputModel) => {
     const modelMap = {
         "openai": "openai/gpt-oss-20b:free",
-        "mistral": "mistralai/mistral-small-3.1-24b-instruct:free",
-        "deepseek": "deepseek/deepseek-r1:free",
-        "google": "google/gemini-2.0-flash-lite-preview-02-05:free",
-        "llama": "meta-llama/llama-3-8b-instruct:free",
+        "stepfun": "stepfun/step-3.5-flash:free",
+        "deepseek": "tngtech/deepseek-r1t2-chimera:free",
+        "llama": "meta-llama/llama-3.3-70b-instruct:free",
         "image": "bytedance-seed/seedream-4.5",
          "Arcee": "arcee-ai/trinity-large-preview:free",
         "Z.AI": "z-ai/glm-4.5-air:free",
@@ -41,7 +40,7 @@ async function* fetchOpenRouterTextStream(model, messages) {
         }
     } catch (error) {
         console.error("Text Stream Error:", error);
-        yield "⚠️ Error: Failed to generate text.";
+        yield "⚠️ Error: Failed to generate text. # Please Try Any Other Model ";
     }
 }
 
