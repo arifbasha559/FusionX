@@ -68,7 +68,9 @@ const Input = ({
     const toggleMenu = (menu) => {
         setActiveMenu(activeMenu === menu ? null : menu);
     };
-
+    if (mode !== 'image' && model == "Flux") {
+        setModel(models[0]);
+    }
     return (
         <div className="w-full">
 
@@ -103,6 +105,7 @@ const Input = ({
 
                         {/* 1. Model Selector (Click to Open) */}
                         <div className="relative" ref={modelMenuRef}>
+                            
                             <button
                                 type="button"
                                 onClick={() => toggleMenu('model')}
@@ -122,13 +125,7 @@ const Input = ({
                                             <React.Fragment key={index}>
 
                                                 {/* LOGIC: Inject separator before the last 2 items */}
-                                                {index === models.length - 1 && (
-                                                    <div className="my-1 border-t border-gray-700/50 pt-1 pb-0.5">
-                                                        <span className="px-3 text-[10px] font-bold text-red-400/80 uppercase tracking-widest select-none">
-                                                            Explicit
-                                                        </span>
-                                                    </div>
-                                                )}
+                                                
 
                                                 <button
                                                     type="button"
@@ -180,13 +177,13 @@ const Input = ({
                         </div>
 
                         {/* 3. Response Time Selector (Click to Open) */}
-                        {mode === 'text' && model == 'openai' && <div className="relative" ref={timeMenuRef}>
+                        {mode === 'text' &&  <div className="relative" ref={timeMenuRef}>
                             <button
                                 type="button"
                                 onClick={() => toggleMenu('time')}
                                 className={`flex items-center justify-between gap-1.5 px-2 py-1.5 text-xs text-gray-300 bg-[#2A2A30] hover:bg-[#36363E] rounded-lg transition-colors border ${activeMenu === 'time' ? 'border-violet-500 ring-1 ring-violet-500/50' : 'border-gray-700/50'}`}
                             >
-                                <IoTimeOutline size={14} className={responseTime === 'high' ? 'text-red-400' : responseTime === 'minimal' ? 'text-green-400' : responseTime === 'low' ? 'text-yellow-400' : 'text-violet-400'} />
+                                <IoTimeOutline size={14} className={responseTime === 'high' ? 'text-red-400' :responseTime === 'low' ? 'text-yellow-400' : 'text-violet-400'} />
                                 <span className="capitalize hidden sm:inline">{responseTime || 'Medium'}</span>
                                 <MdKeyboardArrowDown className={`transition-transform duration-200 ${activeMenu === 'time' ? 'rotate-180' : ''}`} />
                             </button>
@@ -194,8 +191,8 @@ const Input = ({
                             {/* Dropdown Menu */}
                             {activeMenu === 'time' && (
                                 <div className="absolute bottom-full left-0 mb-2 w-32 bg-[#1B1B1F] border border-gray-700 rounded-lg shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
-                                    {['minimal', 'low', 'medium', 'high'].map((time, index) => (
-                                        <>
+                                    {['low', 'medium', 'high'].map((time, index) => (
+                                        <div key={index}>
                                             {index === 0 && (
                                                 <div className="my-1 border-t border-gray-700/50 pt-2 pb-0.5">
                                                     <p className="px-3 text-[8px] font-bold text-center  text-green-400/80 uppercase tracking-widest select-none">
@@ -215,7 +212,7 @@ const Input = ({
                                             >
                                                 {time.charAt(0).toUpperCase() + time.slice(1)}
                                             </button>
-                                        </>
+                                        </div>
                                     ))}
                                 </div>
                             )}
@@ -225,13 +222,13 @@ const Input = ({
                     {/* RIGHT SIDE: Actions (Mic, Send) */}
                     <div className="flex items-center gap-2 ml-auto">
 
-                        <button
+                        {/* <button
                             type="button"
                             className="p-2 md:inline hidden rounded-full text-gray-400 hover:text-white hover:bg-[#36363E] transition-all"
                         >
                             <BiMicrophone className="text-xl" />
                         </button>
-                        {/* Inside Input.jsx's return statement, replace the send button block with this: */}
+                        Inside Input.jsx's return statement, replace the send button block with this: */}
                         <button
                             type="button"
                             disabled={!input && !isTyping} // Enable if typing (to stop) or if input has text (to send)

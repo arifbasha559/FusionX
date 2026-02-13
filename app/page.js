@@ -14,10 +14,10 @@ export default function LandingPage() {
 
   const getModelIcon = (modelName) => {
     if (modelName.includes('openai')) return <FaBrain />;
-    if (modelName.includes('mistral')) return <FaWind />;
+    if (modelName.includes('stepfun')) return <FaWind />;
     if (modelName.includes('deepseek')) return <FaEye />;
-    if (modelName.includes('google')) return <FaGlobe />;
     if (modelName.includes('llama')) return <FaCube />;
+    if (modelName.includes('Seedream')) return <FaGlobe />;
     if (modelName.includes('Arcee')) return <FaRobot />;
     if (modelName.includes('Z.AI')) return <FaBolt />;
     if (modelName.includes('Nemotron')) return <FaBrain />;

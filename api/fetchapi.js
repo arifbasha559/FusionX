@@ -4,9 +4,9 @@ import { OpenRouter } from "@openrouter/sdk";
 const client = new OpenRouter({
     apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY,
     defaultHeaders: {
-    'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://fusionx.netlify.app',
-    'X-Title': 'My Chat App',
-},
+        'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'https://fusionx.netlify.app',
+        'X-Title': 'My Chat App',
+    },
 });
 
 const resolveModel = (inputModel) => {
@@ -15,23 +15,24 @@ const resolveModel = (inputModel) => {
         "stepfun": "stepfun/step-3.5-flash:free",
         "deepseek": "tngtech/deepseek-r1t2-chimera:free",
         "llama": "meta-llama/llama-3.3-70b-instruct:free",
-        "image": "bytedance-seed/seedream-4.5",
-         "Arcee": "arcee-ai/trinity-large-preview:free",
+        "Seedream": "bytedance-seed/seedream-4.5",
+        "Arcee": "arcee-ai/trinity-large-preview:free",
         "Z.AI": "z-ai/glm-4.5-air:free",
         "Nemotron": "nvidia/nemotron-3-nano-30b-a3b:free",
-         "dolphin": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+        "dolphin": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
         "image": "flux"
     };
     return modelMap[inputModel] || inputModel;
 };
 
 // 1. TEXT STREAM
-async function* fetchOpenRouterTextStream(model, messages) {
+async function* fetchOpenRouterTextStream(model, messages,responseTime) {
     try {
         const stream = await client.chat.send({
             model: model,
             messages: messages,
             stream: true,
+           
         });
 
         for await (const chunk of stream) {
@@ -39,8 +40,17 @@ async function* fetchOpenRouterTextStream(model, messages) {
             if (content) yield content;
         }
     } catch (error) {
-        console.error("Text Stream Error:", error);
-        yield "⚠️ Error: Failed to generate text. # Please Try Any Other Model ";
+        const stream = await client.chat.send({
+            model: model,
+            messages: messages,
+            stream: true,
+         
+        });
+
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content;
+            if (content) yield content;
+        }
     }
 }
 
@@ -54,8 +64,8 @@ async function* fetchSafeImage(prompt) {
             console.log("Attempt 1: Puter (Flux)...");
             const result = await window.puter.ai.txt2img(prompt, {
                 model: 'black-forest-labs/FLUX.1-schnell',
-                width: 512,  // <--- REDUCED SIZE (Default is usually 1024)
-                height: 512
+               width: 412,  // <--- REDUCED SIZE (Default is usually 1024)
+                height: 412
             });
             imageUrl = result?.src || result;
             if (isValidImage(imageUrl)) {
@@ -72,8 +82,8 @@ async function* fetchSafeImage(prompt) {
             console.log("Attempt 2: Puter (SDXL)...");
             const result = await window.puter.ai.txt2img(prompt, {
                 model: 'stabilityai/stable-diffusion-xl-base-1.0',
-                width: 512,  // <--- REDUCED SIZE (Default is usually 1024)
-                height: 512
+                width: 412,  // <--- REDUCED SIZE (Default is usually 1024)
+                height: 412
             });
             imageUrl = result?.src || result;
             if (isValidImage(imageUrl)) {
@@ -81,13 +91,13 @@ async function* fetchSafeImage(prompt) {
                 return;
             }
         } catch (e) {
-            console.warn("Puter SDXL failed, switching to Pollinations...", e);
+            console.warn("Puter SDXL failed...", e);
         }
         try {
             console.log("Attempt 3: Puter (SDXL)...");
             const result = await window.puter.ai.txt2img(prompt, {
-                width: 512,  // <--- REDUCED SIZE (Default is usually 1024)
-                height: 512
+                width: 412,  // <--- REDUCED SIZE (Default is usually 1024)
+                height: 412
             });
             imageUrl = result?.src || result;
             if (isValidImage(imageUrl)) {
@@ -95,7 +105,7 @@ async function* fetchSafeImage(prompt) {
                 return;
             }
         } catch (e) {
-            console.warn("Puter SDXL failed, switching to Pollinations...", e);
+            console.warn("Puter SDXL failed...", e);
         }
     }
 
@@ -109,14 +119,13 @@ function isValidImage(url) {
 
 // 3. MAIN EXPORT
 const fetchApi = (input, model, mode, responseTime, messages) => {
-    console.log("Key available:",process.env.NEXT_PUBLIC_OPENROUTER_API_KEY);
     const targetModel = resolveModel(model);
 
     if (mode === "image" || model === "image" || model === "flux") {
         return fetchSafeImage(input);
     }
-
-    return fetchOpenRouterTextStream(targetModel, messages);
+   
+    return fetchOpenRouterTextStream(targetModel, messages,responseTime);
 };
 
 export const titleMaker = async (inputContent) => {

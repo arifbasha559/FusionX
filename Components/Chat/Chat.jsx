@@ -11,8 +11,9 @@ import { BiImage } from "react-icons/bi";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { nanoid } from "nanoid";
-import { useUser } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import ChatLoader from '@/Components/Chat/ChatLoader'; // Check your path
+import remarkGfm from "remark-gfm";
 
 // --- 1. New Loading Bubble Component ---
 const LoadingBubble = () => (
@@ -103,7 +104,7 @@ const CodeBlock = ({ children }) => {
 const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, copiedIndex, setCopiedIndex }) => {
     const isThinking = msg.content === "Thinking 🤖...";
     const [like, setLike] = useState(null);
-
+    const { isSignedIn, user } = useUser();
 
     return (
         <div className={`flex gap-3 items-start group/message ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -117,11 +118,12 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
             <div className={`flex flex-col max-w-[85%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
                 {msg.role === "system" && msg.model && (
                     <span className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 ml-1 font-semibold">
+                        {console.log(msg)}
                         {msg.model} {msg.mode === 'image' && '• Image'}
                     </span>
                 )}
 
-                <div className={`px-4 py-2 rounded-2xl max-w-full  shadow-sm text-sm w-fit ${msg.role === "user" ? "bg-violet-600 text-white rounded-tr-none" : "bg-[#2E2E33] text-gray-100 rounded-tl-none"}`}>
+                <div className={`px-4 py-2 items-center rounded-2xl max-w-full  shadow-sm text-sm w-fit ${msg.role === "user" ? "bg-violet-600 text-white rounded-tr-none" : "bg-[#2E2E33] text-gray-100 rounded-tl-none"}`}>
                     {isThinking ? (
                         <LoadingBubble />
                     ) : (
@@ -129,8 +131,9 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                             <div className="whitespace-pre-wrap">{msg.content.slice(0, -1)}<span className="animate-pulse">▋</span></div>
                         ) : (
                             msg.role === "system" ?
-                                <ReactMarkdown components={markdownComponents} urlTransform={(value) => value}>
+                                <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]} urlTransform={(value) => value}>
                                     {msg.content?.trim()}
+                                    
                                 </ReactMarkdown>
                                 : msg.content
                         )
@@ -153,7 +156,12 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
                 )}
             </div>
             {msg.role === "user" && (
-                <div className="bg-[#2A2A2E] p-2 rounded-full rounded-tl-none "><FaUser className="text-white" /></div>
+                <div className="bg-[#2A2A2E] p-2 flex justify-center rounded-full rounded-tl-none ">
+                    {isSignedIn && user ? (
+                        <UserButton appearance={{ elements: { userButtonAvatarBox: "hidden", userButtonPopoverFooter: "hidden" } }} />)
+                        : <FaUser className="text-white" />
+                    }
+                </div>
             )}
         </div>
     );
@@ -190,7 +198,7 @@ const Chat = () => {
     const params = useParams(); // 2. Get parameters
     const router = useRouter();
     const routeId = params?.id;
-    const models = ["openai", "stepfun", "deepseek", "llama", "Arcee", "Z.AI", "Nemotron", "dolphin"];
+    const models = ["openai", "stepfun", "deepseek", "llama", "Arcee", "Z.AI", "Nemotron"];
     const [input, setInput] = useState("");
     const [model, setModel] = useState(models[0]);
     const [messages, setMessages] = useState([
@@ -507,7 +515,7 @@ const Chat = () => {
         h1: (props) => <h1 className="text-xl font-bold text-violet-300 mt-6 mb-3" {...props} />,
         h2: (props) => <h2 className="text-lg font-semibold text-violet-300 mt-5 mb-2" {...props} />,
         h3: (props) => <h3 className="text-md font-semibold text-violet-200 mt-4 mb-2" {...props} />,
-        p: (props) => <p className="leading-relaxed text-gray-300 mb-3" {...props} />,
+        p: (props) => <p className="leading-relaxed text-gray-300 my-1" {...props} />,
         ul: (props) => <ul className="list-disc list-inside ml-2 mb-4 space-y-1 text-gray-300" {...props} />,
         ol: (props) => <ol className="list-decimal list-inside ml-2 mb-4 text-gray-300" {...props} />,
         a: (props) => <a className="text-blue-400 hover:text-blue-300 hover:underline transition-colors" target="_blank" rel="noreferrer" {...props} />,
@@ -516,41 +524,13 @@ const Chat = () => {
             : <CodeBlock>{children}</CodeBlock>,
 
         // --- TABLE UPGRADES START HERE ---
-        table: (props) => (
-            <div className="my-6 rounded-lg border border-gray-800 overflow-hidden bg-gray-900/50">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm text-left text-gray-400" {...props} />
-                </div>
-            </div>
-        ),
-        thead: (props) => (
-            <thead
-                className="text-xs text-gray-400 uppercase bg-gray-900 border-b border-gray-800"
-                {...props}
-            />
-        ),
-        tbody: (props) => (
-            <tbody className="divide-y divide-gray-800" {...props} />
-        ),
-        tr: (props) => (
-            <tr className="hover:bg-gray-800/40 transition-colors duration-200" {...props} />
-        ),
-        th: (props) => (
-            <th
-                scope="col"
-                // whitespace-nowrap forces the table to be wide, triggering the clean scroll
-                className="px-6 py-4 font-semibold tracking-wider text-gray-200 whitespace-nowrap"
-                {...props}
-            />
-        ),
-        td: (props) => (
-            <td
-                // Removed font-medium for a cleaner look
-                // min-w-[min-content] ensures cells don't squish too much
-                className="px-6 py-4 font-normal text-gray-300 align-top leading-relaxed"
-                {...props}
-            />
-        ),
+         table: (props) => <div className="overflow-x-auto my-3"><table className="min-w-full border border-gray-700 text-sm" {...props} /></div>,
+
+        thead: (props) => <thead className="bg-gray-800" {...props} />,
+
+        th: (props) => <th className="px-3 py-2 text-left overflow-auto font-semibold text-gray-200 border-b border-gray-700" {...props} />,
+
+        td: (props) => <td className="px-3 py-2 border-b border-gray-700 text-gray-300" {...props} />,
     }), []);
 
     return (

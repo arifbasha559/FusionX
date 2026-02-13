@@ -195,3 +195,6 @@ body {
 .loader-square:nth-of-type(7) {
   animation-delay: -10s;
 }
+#devtools-indicator{
+  display: none !important;
+}

@@ -29,8 +29,8 @@ const NoInternet = () => {
   if (isOnline) return null;
 
   return (
-    <div className="fixed inset-0 z-9999 flex flex-col items-center justify-center bg-[#0f0f0f] text-white">
-        <Navbar></Navbar>
+    <div className="fixed inset-0 z-99999 flex flex-col items-center justify-center bg-[#0f0f0f] text-white">
+        <Navbar/>
       {/* Icon Circle */}
       <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-[#1e1e1e]">
         <MdSignalWifiOff className="text-5xl text-gray-400" />
