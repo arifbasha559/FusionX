@@ -118,7 +118,7 @@ const MessageItem = memo(({ msg, index, markdownComponents, copyToClipboard, cop
             <div className={`flex flex-col max-w-[85%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
                 {msg.role === "system" && msg.model && (
                     <span className="text-[10px] uppercase tracking-wider text-gray-500 mb-1 ml-1 font-semibold">
-                        {console.log(msg)}
+                        {/* {console.log(msg)} */}
                         {msg.model} {msg.mode === 'image' && '• Image'}
                     </span>
                 )}

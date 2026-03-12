@@ -4,11 +4,13 @@ import React, { useEffect, useState } from 'react';
 import { FaPlus, FaGithub, FaDiscord, FaInfo } from "react-icons/fa6";
 import { LuTerminal } from "react-icons/lu";
 import { BiMessageSquareDetail, BiTrash } from "react-icons/bi";
+import { FiTrash2 } from "react-icons/fi";
 import Link from 'next/link';
 import { FaHome } from 'react-icons/fa';
 import { IoClose } from 'react-icons/io5';
 import { useParams, useRouter } from 'next/navigation';
 import { SignInButton, UserButton, useUser } from '@clerk/nextjs';
+import { METHODS } from 'node:http';
 
 const Sidebar = ({ isOpen, toggleSidebar, isnewChat, setIsnewChat }) => {
   const [chats, setChats] = useState([]);
@@ -44,7 +46,47 @@ const Sidebar = ({ isOpen, toggleSidebar, isnewChat, setIsnewChat }) => {
       setIsLoading(false);
     }
   };
+  const deleteChat = async (chatId) => {
+    try {
 
+      if (chatId) {
+        // ... setup chatId ...
+        let dataLoaded = false;
+
+        // --- OPTION A: DB Load ---
+        if (isSignedIn) {
+          try {
+            const res = await fetch(`/api/chat/${chatId}`, {
+              method: 'POST',
+            });
+            if (res.ok) {
+              alert("Chat deleted successfully!");
+              dataLoaded = true;
+              router.push('/chat'); // Redirect to main chat page after deletion
+
+            }
+
+          } catch (error) { console.error("Failed to load from DB:", error); }
+        }
+
+        // --- OPTION B: LocalStorage Load ---
+        if (!dataLoaded) {
+          const savedChats = localStorage.getItem("chats");
+          if (savedChats) {
+            const parsedChats = JSON.parse(savedChats);
+            const updatedChats = parsedChats.filter(c => c.id !== chatId);
+            localStorage.setItem("chats", JSON.stringify(updatedChats));
+            window.dispatchEvent(new Event("chatListUpdated"));
+            alert("Chat deleted successfully!");
+            dataLoaded = true;
+            router.push('/chat');
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    }
+  }
   useEffect(() => {
     loadChats(); // Initial Load
 
@@ -76,94 +118,103 @@ const Sidebar = ({ isOpen, toggleSidebar, isnewChat, setIsnewChat }) => {
     >
       <div className="flex flex-col h-full p-4">
         {/* Logo Area */}
-          <div className="flex items-center gap-2 mb-8 px-2">
-        <Link href={"/"} className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-8 px-2">
+          <Link href={"/"} className="flex items-center gap-2">
             <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
               <LuTerminal className='text-white text-xl' />
             </div>
             <h1 className="text-white font-bold text-xl tracking-wide ">Fusion<span className="text-violet-500">X</span></h1>
+          </Link>
+          <IoClose onClick={toggleSidebar} className="text-white text-lg cursor-pointer ml-auto md:hidden " />
+        </div>
+
+        {/* New Chat Button */}
+        <Link
+          href={"/chat"}
+          onClick={() => {
+            if (setIsnewChat) setIsnewChat(prev => !prev);
+            if (window.innerWidth < 768) toggleSidebar();
+          }}
+          className="flex items-center gap-3 w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 mb-6"
+        >
+          <FaPlus className="text-sm" />
+          <span className="text-sm font-medium">New Chat</span>
         </Link>
-        <IoClose onClick={toggleSidebar} className="text-white text-lg cursor-pointer ml-auto md:hidden " />
-      </div>
 
-      {/* New Chat Button */}
-      <Link
-        href={"/chat"}
-        onClick={() => {
-          if (setIsnewChat) setIsnewChat(prev => !prev);
-          if (window.innerWidth < 768) toggleSidebar();
-        }}
-        className="flex items-center gap-3 w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 mb-6"
-      >
-        <FaPlus className="text-sm" />
-        <span className="text-sm font-medium">New Chat</span>
-      </Link>
+        {/* History List */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          <p className="px-4 text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Recent</p>
 
-      {/* History List */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide">
-        <p className="px-4 text-xs font-semibold text-gray-500 mb-3 uppercase tracking-wider">Recent</p>
+          {isLoading && chats.length === 0 ? ( // Only show if loading AND empty
+            <p className="px-4 text-xs text-gray-500 animate-pulse">Loading history...</p>
+          ) : (
+            <div className="space-y-1">
+              {chats.length > 0 ? (
+                chats.map((item, i) => {
+                  const chatId = item._id || item.id;
+                  return (
+                    <div
+                      key={chatId || i}
+                      // Use params.id to highlight active chat WITHOUT re-fetching
+                      className={`group flex items-center justify-between w-full px-4 py-3 ${params?.id === chatId ? "bg-gray-800/80" : "bg-inherit"} text-gray-300 hover:bg-gray-800/50 hover:text-white rounded-lg transition-all text-sm cursor-pointer`}
+                      onClick={() => {
+                        router.push(`/chat/${chatId}`);
+                        if (window.innerWidth < 768) toggleSidebar();
+                      }}
+                    >
+                      <div className="flex  items-center gap-3 overflow-hidden">
+                        <BiMessageSquareDetail className="text-gray-500 group-hover:text-violet-400 shrink-0" />
+                        <span className="truncate max-w-[130px]" title={item.title}>{item.title || "Untitled Chat"}</span>
 
-        {isLoading && chats.length === 0 ? ( // Only show if loading AND empty
-          <p className="px-4 text-xs text-gray-500 animate-pulse">Loading history...</p>
-        ) : (
-          <div className="space-y-1">
-            {chats.length > 0 ? (
-              chats.map((item, i) => {
-                const chatId = item._id || item.id;
-                return (
-                  <div
-                    key={chatId || i}
-                    // Use params.id to highlight active chat WITHOUT re-fetching
-                    className={`group flex items-center justify-between w-full px-4 py-3 ${params?.id === chatId ? "bg-gray-800/80" : "bg-inherit"} text-gray-300 hover:bg-gray-800/50 hover:text-white rounded-lg transition-all text-sm cursor-pointer`}
-                    onClick={() => {
-                      router.push(`/chat/${chatId}`);
-                      if (window.innerWidth < 768) toggleSidebar();
-                    }}
-                  >
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <BiMessageSquareDetail className="text-gray-500 group-hover:text-violet-400 shrink-0" />
-                      <span className="truncate max-w-[130px]" title={item.title}>{item.title || "Untitled Chat"}</span>
+                      </div>
+                        <button
+                        onClick={()=>deleteChat(chatId)}
+                          className="group/chat  hidden  group-hover:flex items-center gap-2 px-1  font-semibold text-red-500  rounded-lg shadow-sm transition-all duration-300  hover:text-white hover:shadow-md active:scale-95"
+                        >
+                          <FiTrash2
+                            className="text-md transition-transform duration-300 group-hover/chat:scale-110 group-hover/chat:-rotate-12"
+                          />
+                        </button>
                     </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div>
-                <p className="px-4 py-2 text-xs font-medium text-gray-600 italic">No chat history found.</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Footer Navigation (Keep your existing footer code here) */}
-      <div className="mt-6 border-t border-gray-800 pt-4 space-y-1">
-        {/* ... paste your existing footer links/UserButton code here ... */}
-        <Link href="/" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-sm">
-          <FaHome /> Home
-        </Link>
-        <Link href="/about" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-sm">
-          <FaInfo /> About Us
-        </Link>
-        {isSignedIn && user ? (
-          <div className="flex items-center gap-3 px-2 py-2 pt-4 rounded-lg border-t border-gray-800 mb-4">
-            <UserButton appearance={{ elements: { userButtonAvatarBox: "hidden", userButtonPopoverFooter: "hidden" } }} />
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-sm text-white font-medium truncate">{user.fullName}</span>
-              <span className="text-xs text-gray-400 truncate">{user.primaryEmailAddress?.emailAddress}</span>
+                  );
+                })
+              ) : (
+                <div>
+                  <p className="px-4 py-2 text-xs font-medium text-gray-600 italic">No chat history found.</p>
+                </div>
+              )}
             </div>
-          </div>
-        ) : (
-          <div className="mb-4">
-            <SignInButton mode="modal">
-              <button className="w-full bg-violet-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-violet-700 transition">
-                Sign In to Save Chats
-              </button>
-            </SignInButton>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Footer Navigation (Keep your existing footer code here) */}
+        <div className="mt-6 border-t border-gray-800 pt-4 space-y-1">
+          {/* ... paste your existing footer links/UserButton code here ... */}
+          <Link href="/" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-sm">
+            <FaHome /> Home
+          </Link>
+          <Link href="/about" className="flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-sm">
+            <FaInfo /> About Us
+          </Link>
+          {isSignedIn && user ? (
+            <div className="flex items-center gap-3 px-2 py-2 pt-4 rounded-lg border-t border-gray-800 mb-4">
+              <UserButton appearance={{ elements: { userButtonAvatarBox: "hidden", userButtonPopoverFooter: "hidden" } }} />
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm text-white font-medium truncate">{user.fullName}</span>
+                <span className="text-xs text-gray-400 truncate">{user.primaryEmailAddress?.emailAddress}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <SignInButton mode="modal">
+                <button className="w-full bg-violet-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-violet-700 transition">
+                  Sign In to Save Chats
+                </button>
+              </SignInButton>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </aside >
   );
 };
