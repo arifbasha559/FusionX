@@ -198,7 +198,7 @@ const Chat = () => {
     const params = useParams(); // 2. Get parameters
     const router = useRouter();
     const routeId = params?.id;
-    const models = ["openai", "stepfun", "deepseek", "llama", "Arcee", "Z.AI", "Nemotron"];
+    const models = ["openai", "stepfun", "liquid", "Arcee", "Z.AI", "Nemotron"];
     const [input, setInput] = useState("");
     const [model, setModel] = useState(models[0]);
     const [messages, setMessages] = useState([

@@ -8,8 +8,12 @@ import { FaBars } from 'react-icons/fa6'
 const App = ({children}) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isnewChat, setIsnewChat] = useState(false);
+    useEffect(() => {
+        if(isnewChat){
 
-
+            window.location.reload();
+        }
+    }, [])
     return (
         <div className="flex max-h-screen relative bg-[#1B1B1F] ">
             {/* 1. Sidebar Component */}

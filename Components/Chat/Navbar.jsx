@@ -82,6 +82,8 @@ const Sidebar = ({ isOpen, toggleSidebar, isnewChat, setIsnewChat }) => {
             router.push('/chat');
           }
         }
+        if (setIsnewChat) setIsnewChat(prev => !prev);
+        if (window.innerWidth < 768) toggleSidebar(); // Force reload to update the list immediately
       }
     } catch (error) {
       console.error("Failed to delete chat:", error);
@@ -134,6 +136,7 @@ const Sidebar = ({ isOpen, toggleSidebar, isnewChat, setIsnewChat }) => {
           onClick={() => {
             if (setIsnewChat) setIsnewChat(prev => !prev);
             if (window.innerWidth < 768) toggleSidebar();
+            window.location.reload();
           }}
           className="flex items-center gap-3 w-full px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 mb-6"
         >
@@ -167,14 +170,14 @@ const Sidebar = ({ isOpen, toggleSidebar, isnewChat, setIsnewChat }) => {
                         <span className="truncate max-w-[130px]" title={item.title}>{item.title || "Untitled Chat"}</span>
 
                       </div>
-                        <button
-                        onClick={()=>deleteChat(chatId)}
-                          className="group/chat  hidden  group-hover:flex items-center gap-2 px-1  font-semibold text-red-500  rounded-lg shadow-sm transition-all duration-300  hover:text-white hover:shadow-md active:scale-95"
-                        >
-                          <FiTrash2
-                            className="text-md transition-transform duration-300 group-hover/chat:scale-110 group-hover/chat:-rotate-12"
-                          />
-                        </button>
+                      <button
+                        onClick={() => deleteChat(chatId)}
+                        className="group/chat  hidden  group-hover:flex items-center gap-2 px-1  font-semibold text-red-500  rounded-lg shadow-sm transition-all duration-300  hover:text-white hover:shadow-md active:scale-95"
+                      >
+                        <FiTrash2
+                          className="text-md transition-transform duration-300 group-hover/chat:scale-110 group-hover/chat:-rotate-12"
+                        />
+                      </button>
                     </div>
                   );
                 })

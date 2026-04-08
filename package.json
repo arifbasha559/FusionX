@@ -11,6 +11,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",
     "@clerk/themes": "^2.4.46",
+    "@google/genai": "^1.48.0",
     "@openrouter/sdk": "^0.5.1",
     "dotenv": "^17.2.3",
     "mongodb": "^7.0.0",

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { MdSignalWifiOff } from "react-icons/md"; // Ensure react-icons is installed
+import { MdClose, MdSignalWifiOff } from "react-icons/md"; // Ensure react-icons is installed
 import Navbar from './Navbar';
 
 const NoInternet = () => {
@@ -45,12 +45,16 @@ const NoInternet = () => {
       </p>
 
       {/* YouTube Style Retry Button */}
+      
       <button
         onClick={() => window.location.reload()}
         className="rounded-full border border-[rgba(255,255,255,0.1)] px-8 py-2.5 text-sm font-medium text-[#3ea6ff] hover:bg-[#263850] transition-colors"
-      >
+        >
         Retry
       </button>
+      <button 
+        className="rounded-full border bottom-10 absolute border-[rgba(255,255,255,0.1)] flex  p-2.5 text-sm font-medium text-[#ff3e3e] hover:bg-[#263850] transition-colors"
+      onClick={()=>setIsOnline(!isOnline)}><MdClose size={20} />  </button>
     </div>
   );
 };
